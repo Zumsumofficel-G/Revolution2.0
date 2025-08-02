@@ -489,18 +489,14 @@ async def get_public_application(form_id: str):
     return ApplicationForm(**form)
 
 @api_router.post("/applications/submit")
-async def submit_application(submission: ApplicationSubmit, current_user = Depends(get_current_user)):
+async def submit_application(submission: ApplicationSubmit):
     # Verify form exists and is active
     form = await db.application_forms.find_one({"id": submission.form_id, "is_active": True})
     if not form:
         raise HTTPException(status_code=404, detail="Application form not found")
     
-    # Create submission with Discord ID if user is logged in via Discord
-    submission_data = submission.dict()
-    if current_user["type"] == "discord":
-        submission_data["applicant_discord_id"] = current_user["user"].discord_id
-    
-    submission_obj = ApplicationSubmission(**submission_data)
+    # Create submission
+    submission_obj = ApplicationSubmission(**submission.dict())
     await db.application_submissions.insert_one(submission_obj.dict())
     
     # Send Discord webhook if configured
