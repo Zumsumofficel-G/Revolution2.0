@@ -1411,6 +1411,7 @@ const AdminSettings = () => {
   const [newUser, setNewUser] = useState({ username: '', password: '', role: 'staff' });
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -1441,9 +1442,45 @@ const AdminSettings = () => {
       alert(`${newUser.role === 'admin' ? 'Admin' : 'Staff'} bruger oprettet successfully!`);
     } catch (error) {
       console.error('Failed to create user:', error);
-      alert('Fejl ved oprettelse af bruger');
+      alert('Fejl ved oprettelse af bruger - brugernavn findes muligvis allerede');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteUser = async (userId, username) => {
+    if (username === 'admin') {
+      alert('Kan ikke slette standard admin bruger');
+      return;
+    }
+    
+    if (confirm(`Er du sikker på at du vil slette brugeren "${username}"?`)) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        await axios.delete(`${API}/admin/users/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        await fetchUsers();
+        alert('Bruger slettet successfully!');
+      } catch (error) {
+        console.error('Failed to delete user:', error);
+        alert(error.response?.data?.detail || 'Fejl ved sletning af bruger');
+      }
+    }
+  };
+
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.put(`${API}/admin/users/${userId}/role`, { role: newRole }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchUsers();
+      alert('Brugerrolle opdateret successfully!');
+      setEditingUser(null);
+    } catch (error) {
+      console.error('Failed to update user role:', error);
+      alert(error.response?.data?.detail || 'Fejl ved opdatering af rolle');
     }
   };
 
@@ -1451,9 +1488,13 @@ const AdminSettings = () => {
     return role === 'admin' ? 'Administrator' : 'Staff';
   };
 
+  const getRoleBadgeVariant = (role) => {
+    return role === 'admin' ? 'default' : 'secondary';
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Indstillinger</h2>
+      <h2 className="text-2xl font-bold text-white">Brugerstyring</h2>
 
       <Card className="bg-white/10 border-purple-500/20 text-white">
         <CardHeader>
@@ -1464,14 +1505,32 @@ const AdminSettings = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={createUser} className="space-y-4">
-            <div>
-              <Label>Brugernavn</Label>
-              <Input
-                value={newUser.username}
-                onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
-                required
-                className="bg-white/5 border-purple-500/30 text-white"
-              />
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label>Brugernavn</Label>
+                <Input
+                  value={newUser.username}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
+                  required
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  placeholder="Indtast brugernavn"
+                />
+              </div>
+              <div>
+                <Label>Rolle</Label>
+                <Select 
+                  value={newUser.role} 
+                  onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}
+                >
+                  <SelectTrigger className="bg-white/5 border-purple-500/30 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="staff">Staff (Kan administrere ansøgninger)</SelectItem>
+                    <SelectItem value="admin">Admin (Fuld adgang)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Label>Adgangskode</Label>
@@ -1481,22 +1540,8 @@ const AdminSettings = () => {
                 onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
                 required
                 className="bg-white/5 border-purple-500/30 text-white"
+                placeholder="Indtast adgangskode"
               />
-            </div>
-            <div>
-              <Label>Rolle</Label>
-              <Select 
-                value={newUser.role} 
-                onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}
-              >
-                <SelectTrigger className="bg-white/5 border-purple-500/30 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="staff">Staff (Kan administrere ansøgninger)</SelectItem>
-                  <SelectItem value="admin">Admin (Fuld adgang)</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <Button type="submit" disabled={loading} className="bg-purple-600 hover:bg-purple-700">
               {loading ? 'Opretter...' : `Opret ${newUser.role === 'admin' ? 'Admin' : 'Staff'}`}
@@ -1507,24 +1552,89 @@ const AdminSettings = () => {
 
       <Card className="bg-white/10 border-purple-500/20 text-white">
         <CardHeader>
-          <CardTitle>Brugere</CardTitle>
+          <CardTitle>Alle Brugere ({users.length})</CardTitle>
           <CardDescription className="text-gray-300">
-            Oversigt over alle brugere i systemet
+            Administrer alle brugere i systemet
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {users.map((user) => (
-              <div key={user.id} className="flex justify-between items-center p-4 bg-white/5 rounded-lg">
-                <div>
-                  <p className="font-semibold">{user.username}</p>
-                  <p className="text-sm text-gray-400">{getRoleText(user.role)}</p>
-                </div>
-                <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                  {user.role}
-                </Badge>
+            {users.length > 0 ? users.map((user) => (
+              <Card key={user.id} className="bg-white/5 border-purple-500/30">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="font-semibold text-lg">{user.username}</h3>
+                        <Badge variant={getRoleBadgeVariant(user.role)}>
+                          {getRoleText(user.role)}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-gray-400 space-y-1">
+                        <div>Oprettet: {new Date(user.created_at).toLocaleDateString('da-DK')}</div>
+                        {user.created_by && user.created_by !== 'system' && (
+                          <div>Oprettet af: {user.created_by}</div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      {editingUser === user.id ? (
+                        <div className="flex items-center space-x-2">
+                          <Select 
+                            defaultValue={user.role}
+                            onValueChange={(newRole) => updateUserRole(user.id, newRole)}
+                          >
+                            <SelectTrigger className="w-32 bg-white/5 border-purple-500/30 text-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="staff">Staff</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            onClick={() => setEditingUser(null)}
+                            size="sm"
+                            variant="outline"
+                            className="border-gray-500 text-gray-300 hover:bg-gray-800"
+                          >
+                            Annuller
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={() => setEditingUser(user.id)}
+                            size="sm"
+                            variant="outline"
+                            className="border-purple-500 text-purple-300 hover:bg-purple-500/20"
+                            disabled={user.username === 'admin'}
+                          >
+                            <Edit className="h-4 w-4" />
+                            Rediger Rolle
+                          </Button>
+                          <Button
+                            onClick={() => deleteUser(user.id, user.username)}
+                            size="sm"
+                            variant="destructive"
+                            disabled={user.username === 'admin'}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Slet
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )) : (
+              <div className="text-center py-8">
+                <Users className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg">Ingen brugere fundet</p>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1537,7 +1647,7 @@ const AdminSettings = () => {
           <div className="space-y-2 text-sm">
             <div><strong>Staff Access:</strong> Kan se og administrere ansøgninger</div>
             <div><strong>Admin Access:</strong> Fuld adgang til alle funktioner</div>
-            <div><strong>Default Admin:</strong> admin / admin123</div>
+            <div><strong>Standard Admin:</strong> admin / admin123 (kan ikke slettes)</div>
             <div><strong>FiveM Server API:</strong> http://45.84.198.57:30120/dynamic.json</div>
             <div><strong>Webhook Format:</strong> Discord</div>
           </div>
