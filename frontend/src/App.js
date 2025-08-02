@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "./components/ui/button";
@@ -25,9 +24,6 @@ import {
   getAuthToken, setAuthToken, removeAuthToken,
   getAuthUser, setAuthUser, removeAuthUser
 } from "./utils/storage";
-
-// API base URL
-const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 // Initialize storage on app load
 initializeStorage();
