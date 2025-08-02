@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Revolution Roleplay - Upload til Simply</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #7c3aed;
+            text-align: center;
+        }
+        .step {
+            background: #f8f9ff;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #7c3aed;
+            border-radius: 5px;
+        }
+        .code {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .important {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Revolution Roleplay - Simply Hosting Guide</h1>
+        
+        <div class="important">
+            <h3>📋 Hvad skal uploades:</h3>
+            <p>Upload HELE indholdet fra <strong>frontend/build/</strong> mappen til din Simply hosting <strong>public_html</strong> mappe.</p>
+        </div>
+
+        <div class="step">
+            <h3>1️⃣ Build applikationen</h3>
+            <div class="code">
+                cd frontend<br>
+                npm install<br>
+                npm run build
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>2️⃣ Log ind på Simply</h3>
+            <ul>
+                <li>Gå til <a href="https://simply.com" target="_blank">Simply.com</a></li>
+                <li>Log ind på dit kontrolpanel</li>
+                <li>Find "File Manager" eller "FTP"</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>3️⃣ Upload filer</h3>
+            <ul>
+                <li>Gå til <strong>public_html</strong> mappen</li>
+                <li>Upload ALT fra <strong>frontend/build/</strong></li>
+                <li>Vigtigt: Inkluder <strong>.htaccess</strong> filen</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>4️⃣ Test website</h3>
+            <ul>
+                <li>Gå til dit domæne</li>
+                <li>Test admin panel: <strong>admin / admin123</strong></li>
+                <li>Verificer at alle sider virker</li>
+            </ul>
+        </div>
+
+        <div class="important">
+            <h3>🔧 Funktioner der virker:</h3>
+            <ul>
+                <li>✅ Landing page med FiveM server stats</li>
+                <li>✅ Discord link integration</li>
+                <li>✅ Application forms</li>
+                <li>✅ Admin panel (fuld funktionalitet)</li>
+                <li>✅ User management</li>
+                <li>✅ Changelog system</li>
+                <li>✅ Data gemt i localStorage</li>
+            </ul>
+        </div>
+
+        <div class="important">
+            <h3>🆘 Problemer?</h3>
+            <p>Kontakt Simply support og fortæl at det er en <strong>React Single Page Application (SPA)</strong> der kræver at alle routes peger på index.html</p>
+        </div>
+    </div>
+</body>
+</html>
