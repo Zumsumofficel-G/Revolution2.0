@@ -851,11 +851,19 @@ def main():
         
         # Application submission and management
         ("Public Submit Application", tester.test_public_submit_application),
+        ("Get Public Application By ID", tester.test_get_public_application_by_id),
         ("Admin Get Submissions", tester.test_admin_get_submissions),
         ("Get Specific Submission", tester.test_get_specific_submission),
         ("Staff Get Submissions", tester.test_staff_get_submissions),
         ("Admin Update Submission Status", tester.test_admin_update_submission_status),
         ("Staff Update Submission Status", tester.test_staff_update_submission_status),
+        
+        # Cleanup and additional tests
+        ("Update Changelog", tester.test_update_changelog),
+        ("Delete Application Form", tester.test_delete_application_form),
+        ("Delete Changelog", tester.test_delete_changelog),
+        ("Unauthorized Access Test", tester.test_unauthorized_access),
+        ("Invalid Login Test", tester.test_invalid_login),
     ]
     
     print(f"\n📋 Running {len(tests)} tests...")
