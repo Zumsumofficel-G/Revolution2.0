@@ -7,6 +7,7 @@ class RevolutionRPAPITester:
     def __init__(self, base_url="https://dc72c7d2-1843-4123-8f8a-c0ac573233bd.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
+        self.discord_token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.created_form_id = None
