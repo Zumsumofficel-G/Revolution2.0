@@ -394,24 +394,34 @@ async def admin_login(login_data: AdminLogin):
     if not admin or not verify_password(login_data.password, admin["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    access_token = create_access_token({"sub": admin["username"], "type": "admin"})
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token({
+        "sub": admin["username"], 
+        "type": "admin",
+        "role": admin.get("role", "admin")
+    })
+    return {"access_token": access_token, "token_type": "bearer", "role": admin.get("role", "admin")}
 
-@api_router.post("/admin/create-admin")
-async def create_admin(admin_data: AdminCreate, current_admin = Depends(require_admin_access)):
+@api_router.post("/admin/create-user")
+async def create_user(admin_data: AdminCreate, current_admin = Depends(require_admin_access)):
     # Check if username exists
     existing = await db.admin_users.find_one({"username": admin_data.username})
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
     
-    new_admin = AdminUser(
+    new_user = AdminUser(
         username=admin_data.username,
         password_hash=hash_password(admin_data.password),
+        role=admin_data.role,
         created_by=getattr(current_admin, 'username', 'discord_user')
     )
     
-    await db.admin_users.insert_one(new_admin.dict())
-    return {"message": "Admin user created successfully"}
+    await db.admin_users.insert_one(new_user.dict())
+    return {"message": f"{'Admin' if admin_data.role == 'admin' else 'Staff'} user created successfully"}
+
+@api_router.get("/admin/users")
+async def get_admin_users(current_admin = Depends(require_admin_access)):
+    users = await db.admin_users.find().to_list(1000)
+    return [{"id": user["id"], "username": user["username"], "role": user["role"], "created_at": user["created_at"]} for user in users]
 
 @api_router.get("/user/me")
 async def get_current_user_info(current_user = Depends(get_current_user)):
