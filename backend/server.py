@@ -50,8 +50,17 @@ class AdminUser(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     username: str
     password_hash: str
+    role: str = "admin"  # admin, staff
     created_at: datetime = Field(default_factory=datetime.utcnow)
     created_by: Optional[str] = None
+
+class StaffUser(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    username: str
+    password_hash: str
+    role: str = "staff"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_by: str
 
 class DiscordUser(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -70,6 +79,7 @@ class AdminLogin(BaseModel):
 class AdminCreate(BaseModel):
     username: str
     password: str
+    role: str = "admin"  # admin or staff
 
 class ApplicationFormField(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
