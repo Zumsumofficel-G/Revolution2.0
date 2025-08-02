@@ -161,11 +161,11 @@ const LandingPage = () => {
             <Button size="lg" className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3">
               <a href="#applications">Ansøg Nu</a>
             </Button>
-            <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-3">
-              <a href="https://discord.gg/htQNqeuxUY" target="_blank" rel="noopener noreferrer">
+            <a href="https://discord.gg/htQNqeuxUY" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-3">
                 Discord Server
-              </a>
-            </Button>
+              </Button>
+            </a>
           </div>
         </div>
       </section>
