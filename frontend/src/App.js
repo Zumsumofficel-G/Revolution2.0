@@ -75,18 +75,11 @@ const LandingPage = () => {
   useEffect(() => {
     const fetchServerStats = async () => {
       try {
-        // Direct fetch to FiveM server (CORS might be an issue, but let's try)
-        const response = await fetch("http://45.84.198.57:30120/dynamic.json");
-        const data = await response.json();
-        setServerStats({
-          players: data.clients || 0,
-          max_players: parseInt(data.sv_maxclients) || 64,
-          hostname: data.hostname || "Revolution Roleplay",
-          gametype: data.gametype || "ESX Legacy"
-        });
+        const response = await axios.get(`${API_BASE_URL}/server-stats`);
+        setServerStats(response.data);
       } catch (error) {
         console.error("Failed to fetch server stats:", error);
-        // Use mock data if FiveM server is unreachable
+        // Use mock data if server is unreachable
         setServerStats({
           players: 1,
           max_players: 64,
@@ -96,16 +89,22 @@ const LandingPage = () => {
       }
     };
 
-    const fetchApplications = () => {
-      const apps = getApplications().filter(app => app.is_active);
-      setApplications(apps);
+    const fetchApplications = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/applications`);
+        setApplications(response.data);
+      } catch (error) {
+        console.error("Failed to fetch applications:", error);
+      }
     };
 
-    const fetchChangelogs = () => {
-      const logs = getChangelogs()
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .slice(0, 5);
-      setChangelogsState(logs);
+    const fetchChangelogs = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/changelogs`);
+        setChangelogsState(response.data.slice(0, 5));
+      } catch (error) {
+        console.error("Failed to fetch changelogs:", error);
+      }
     };
 
     fetchServerStats();
