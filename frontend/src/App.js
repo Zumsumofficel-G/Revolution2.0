@@ -71,8 +71,6 @@ const AuthProvider = ({ children }) => {
 const LandingPage = () => {
   const [serverStats, setServerStats] = useState({ players: 0, max_players: 64, hostname: "Revolution Roleplay" });
   const [applications, setApplications] = useState([]);
-  const [discordMessages, setDiscordMessages] = useState([]);
-  const { user } = useAuth();
 
   useEffect(() => {
     // Fetch server stats
@@ -95,19 +93,8 @@ const LandingPage = () => {
       }
     };
 
-    // Fetch Discord messages
-    const fetchDiscordMessages = async () => {
-      try {
-        const response = await axios.get(`${API}/discord/messages`);
-        setDiscordMessages(response.data);
-      } catch (error) {
-        console.error("Failed to fetch Discord messages:", error);
-      }
-    };
-
     fetchServerStats();
     fetchApplications();
-    fetchDiscordMessages();
 
     // Update server stats every 30 seconds
     const interval = setInterval(fetchServerStats, 30000);
