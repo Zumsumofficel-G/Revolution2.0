@@ -411,27 +411,45 @@ class RevolutionRPAPITester:
         return success
 
 def main():
-    print("🚀 Starting Revolution RP API Tests")
-    print("=" * 50)
+    print("🚀 Starting Revolution RP Discord-Integrated API Tests")
+    print("=" * 60)
     
     tester = RevolutionRPAPITester()
     
-    # Test sequence
+    # Test sequence - organized by functionality
     tests = [
+        # Basic functionality tests
         ("Server Stats", tester.test_server_stats),
+        
+        # Discord integration tests
+        ("Discord Messages", tester.test_discord_messages),
+        ("Discord OAuth Login", tester.test_discord_oauth_login),
+        
+        # Legacy admin authentication tests
         ("Admin Login", tester.test_admin_login),
         ("Admin Login Invalid", tester.test_admin_login_invalid),
-        ("Admin Me", tester.test_admin_me),
+        ("User Me Endpoint", tester.test_user_me_endpoint),
+        ("User Applications Endpoint", tester.test_user_applications_endpoint),
+        
+        # Application management tests
         ("Create Application Form", tester.test_create_application_form),
         ("Get Admin Application Forms", tester.test_get_admin_application_forms),
         ("Get Public Applications", tester.test_get_public_applications),
         ("Get Specific Application", tester.test_get_specific_application),
-        ("Submit Application", tester.test_submit_application),
+        
+        # Application submission tests
+        ("Submit Application (Unauthenticated)", tester.test_submit_application),
+        ("Submit Application (Authenticated)", tester.test_submit_application_with_auth),
+        
+        # Admin management tests
         ("Get Admin Submissions", tester.test_get_admin_submissions),
         ("Update Submission Status", tester.test_update_submission_status),
         ("Create New Admin", tester.test_create_new_admin),
         ("New Admin Login", tester.test_new_admin_login),
     ]
+    
+    print(f"\n📋 Running {len(tests)} tests...")
+    print("-" * 60)
     
     for test_name, test_func in tests:
         try:
@@ -440,14 +458,27 @@ def main():
             print(f"❌ {test_name} failed with exception: {str(e)}")
     
     # Print results
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
     
     if tester.tests_passed == tester.tests_run:
         print("🎉 All tests passed!")
+        print("\n✅ Discord Integration Features:")
+        print("   - Discord messages endpoint working")
+        print("   - Discord OAuth login URL generation working")
+        print("   - User authentication system working")
+        print("   - Application submission with Discord integration working")
         return 0
     else:
-        print(f"⚠️  {tester.tests_run - tester.tests_passed} tests failed")
+        failed_tests = tester.tests_run - tester.tests_passed
+        print(f"⚠️  {failed_tests} tests failed")
+        print("\n🔍 Issues found:")
+        if failed_tests > 5:
+            print("   - Multiple critical failures detected")
+            print("   - Backend may need significant fixes")
+        else:
+            print("   - Minor issues detected")
+            print("   - Backend mostly functional")
         return 1
 
 if __name__ == "__main__":
