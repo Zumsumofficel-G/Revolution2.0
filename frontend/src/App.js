@@ -1802,7 +1802,7 @@ const ChangelogManager = () => {
 
 // User Manager Component
 const UserManager = ({ applications }) => {
-  const [users, setUsers] = useState([]);
+  const [users, setUsersState] = useState([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -1814,16 +1814,13 @@ const UserManager = ({ applications }) => {
   });
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsersList();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsersList = () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(`${API}/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUsers(response.data);
+      const usersList = getUsers();
+      setUsersState(usersList);
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }
@@ -1831,13 +1828,28 @@ const UserManager = ({ applications }) => {
 
   const handleCreateUser = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.post(`${API}/admin/create-user`, newUser, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const users = getUsers();
+      
+      // Check if username exists
+      if (users.find(user => user.username === newUser.username)) {
+        alert('Brugernavn eksisterer allerede');
+        return;
+      }
+      
+      const newUserWithId = {
+        id: `user-${Date.now()}`,
+        ...newUser,
+        password_hash: newUser.password, // In real app, this would be hashed
+        created_at: new Date().toISOString(),
+        created_by: "admin"
+      };
+      
+      users.push(newUserWithId);
+      setUsers(users);
+      
       setIsCreateDialogOpen(false);
       setNewUser({ username: '', password: '', role: 'staff', allowed_forms: [] });
-      fetchUsers();
+      fetchUsersList();
     } catch (error) {
       console.error('Failed to create user:', error);
       alert('Fejl ved oprettelse af bruger');
@@ -1846,23 +1858,27 @@ const UserManager = ({ applications }) => {
 
   const handleEditUser = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const updateData = {
-        username: editingUser.username,
-        allowed_forms: editingUser.allowed_forms
-      };
+      const users = getUsers();
+      const userIndex = users.findIndex(user => user.id === editingUser.id);
       
-      // Only include password if it's been changed
-      if (editingUser.newPassword) {
-        updateData.password = editingUser.newPassword;
+      if (userIndex !== -1) {
+        const updateData = {
+          username: editingUser.username,
+          allowed_forms: editingUser.allowed_forms
+        };
+        
+        // Only include password if it's been changed
+        if (editingUser.newPassword) {
+          updateData.password_hash = editingUser.newPassword;
+        }
+        
+        users[userIndex] = { ...users[userIndex], ...updateData };
+        setUsers(users);
       }
       
-      await axios.put(`${API}/admin/users/${editingUser.id}`, updateData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
       setIsEditDialogOpen(false);
       setEditingUser(null);
-      fetchUsers();
+      fetchUsersList();
     } catch (error) {
       console.error('Failed to update user:', error);
       alert('Fejl ved opdatering af bruger');
@@ -1870,14 +1886,20 @@ const UserManager = ({ applications }) => {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!confirm('Er du sikker på, at du vil slette denne bruger?')) return;
+    if (!window.confirm('Er du sikker på, at du vil slette denne bruger?')) return;
     
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.delete(`${API}/admin/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchUsers();
+      const users = getUsers();
+      const userToDelete = users.find(user => user.id === userId);
+      
+      if (userToDelete && userToDelete.username === 'admin') {
+        alert('Kan ikke slette standard admin konto');
+        return;
+      }
+      
+      const filteredUsers = users.filter(user => user.id !== userId);
+      setUsers(filteredUsers);
+      fetchUsersList();
     } catch (error) {
       console.error('Failed to delete user:', error);
       alert('Fejl ved sletning af bruger');
@@ -1886,12 +1908,14 @@ const UserManager = ({ applications }) => {
 
   const handleUpdateRole = async (userId, newRole) => {
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.put(`${API}/admin/users/${userId}/role`, 
-        { role: newRole }, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchUsers();
+      const users = getUsers();
+      const userIndex = users.findIndex(user => user.id === userId);
+      
+      if (userIndex !== -1) {
+        users[userIndex].role = newRole;
+        setUsers(users);
+        fetchUsersList();
+      }
     } catch (error) {
       console.error('Failed to update role:', error);
       alert('Fejl ved opdatering af rolle');
