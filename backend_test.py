@@ -418,6 +418,303 @@ class RevolutionRPAPITester:
             print(f"   Found {len(response)} public applications")
         return success
 
+    def test_discord_messages(self):
+        """Test Discord messages endpoint"""
+        success, response = self.run_test(
+            "Discord Messages",
+            "GET",
+            "discord/messages",
+            200
+        )
+        if success:
+            print(f"   Found {len(response)} Discord messages")
+            if response:
+                first_msg = response[0]
+                print(f"   Sample message: {first_msg.get('content', '')[:50]}...")
+                print(f"   Author: {first_msg.get('author_username', 'Unknown')}")
+        return success
+
+    def test_discord_news(self):
+        """Test Discord news endpoint"""
+        success, response = self.run_test(
+            "Discord News",
+            "GET",
+            "discord/news",
+            200
+        )
+        if success:
+            print(f"   Found {len(response)} Discord news items")
+        return success
+
+    def test_public_changelogs(self):
+        """Test public changelogs endpoint"""
+        success, response = self.run_test(
+            "Public Changelogs",
+            "GET",
+            "changelogs",
+            200
+        )
+        if success:
+            print(f"   Found {len(response)} public changelogs")
+        return success
+
+    def test_admin_create_changelog(self):
+        """Test admin creating changelog"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
+            return False
+
+        changelog_data = {
+            "title": "Test Update v1.0",
+            "content": "Dette er en test changelog med nye features og bugfixes.",
+            "version": "1.0.0"
+        }
+        
+        success, response = self.run_test(
+            "Admin Create Changelog",
+            "POST",
+            "admin/changelogs",
+            200,
+            data=changelog_data,
+            token=self.admin_token
+        )
+        if success and 'id' in response:
+            self.created_changelog_id = response['id']
+            print(f"   Created changelog ID: {self.created_changelog_id}")
+        return success
+
+    def test_admin_get_changelogs(self):
+        """Test admin getting changelogs"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
+            return False
+            
+        success, response = self.run_test(
+            "Admin Get Changelogs",
+            "GET",
+            "admin/changelogs",
+            200,
+            token=self.admin_token
+        )
+        if success:
+            print(f"   Found {len(response)} admin changelogs")
+        return success
+
+    def test_staff_cannot_create_changelog(self):
+        """Test that staff cannot create changelogs"""
+        if not self.staff_token:
+            print("⚠️  Skipping - No staff token available")
+            return False
+
+        changelog_data = {
+            "title": "Staff Should Not Create This",
+            "content": "This should fail",
+            "version": "0.0.1"
+        }
+        
+        success, response = self.run_test(
+            "Staff Cannot Create Changelog",
+            "POST",
+            "admin/changelogs",
+            403,  # Should be forbidden
+            data=changelog_data,
+            token=self.staff_token
+        )
+        return success
+
+    def test_staff_cannot_get_admin_changelogs(self):
+        """Test that staff cannot access admin changelogs endpoint"""
+        if not self.staff_token:
+            print("⚠️  Skipping - No staff token available")
+            return False
+            
+        success, response = self.run_test(
+            "Staff Cannot Get Admin Changelogs",
+            "GET",
+            "admin/changelogs",
+            403,  # Should be forbidden
+            token=self.staff_token
+        )
+        return success
+
+    def test_update_user_role(self):
+        """Test updating user role (admin only)"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
+            return False
+
+        # First get a user to update (find a staff user)
+        users_response = requests.get(f"{self.base_url}/admin/users", 
+                                    headers={'Authorization': f'Bearer {self.admin_token}'})
+        if users_response.status_code != 200:
+            print("⚠️  Could not fetch users for role update test")
+            return False
+            
+        users = users_response.json()
+        staff_user = None
+        for user in users:
+            if user.get('role') == 'staff' and user.get('username') != 'admin':
+                staff_user = user
+                break
+        
+        if not staff_user:
+            print("⚠️  No staff user found for role update test")
+            return False
+            
+        success, response = self.run_test(
+            "Update User Role",
+            "PUT",
+            f"admin/users/{staff_user['id']}/role",
+            200,
+            data={"role": "staff"},  # Keep as staff
+            token=self.admin_token
+        )
+        return success
+
+    def test_delete_user(self):
+        """Test deleting a user (admin only)"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
+            return False
+
+        # Create a temporary user to delete
+        temp_user_data = {
+            "username": f"temp_delete_{datetime.now().strftime('%H%M%S')}",
+            "password": "temppass123",
+            "role": "staff"
+        }
+        
+        create_response = requests.post(f"{self.base_url}/admin/create-user", 
+                                      json=temp_user_data,
+                                      headers={'Authorization': f'Bearer {self.admin_token}'})
+        if create_response.status_code != 200:
+            print("⚠️  Could not create temp user for deletion test")
+            return False
+
+        # Get the created user ID
+        users_response = requests.get(f"{self.base_url}/admin/users", 
+                                    headers={'Authorization': f'Bearer {self.admin_token}'})
+        users = users_response.json()
+        temp_user = None
+        for user in users:
+            if user.get('username') == temp_user_data['username']:
+                temp_user = user
+                break
+        
+        if not temp_user:
+            print("⚠️  Could not find temp user for deletion test")
+            return False
+            
+        success, response = self.run_test(
+            "Delete User",
+            "DELETE",
+            f"admin/users/{temp_user['id']}",
+            200,
+            token=self.admin_token
+        )
+        return success
+
+    def test_update_user_info(self):
+        """Test updating user information (admin only)"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
+            return False
+
+        # Get a staff user to update
+        users_response = requests.get(f"{self.base_url}/admin/users", 
+                                    headers={'Authorization': f'Bearer {self.admin_token}'})
+        if users_response.status_code != 200:
+            print("⚠️  Could not fetch users for update test")
+            return False
+            
+        users = users_response.json()
+        staff_user = None
+        for user in users:
+            if user.get('role') == 'staff' and user.get('username') != 'admin':
+                staff_user = user
+                break
+        
+        if not staff_user:
+            print("⚠️  No staff user found for update test")
+            return False
+            
+        success, response = self.run_test(
+            "Update User Info",
+            "PUT",
+            f"admin/users/{staff_user['id']}",
+            200,
+            data={"allowed_forms": []},  # Update allowed forms
+            token=self.admin_token
+        )
+        return success
+
+    def test_get_specific_application_form(self):
+        """Test getting a specific application form"""
+        if not self.admin_token or not self.created_form_id:
+            print("⚠️  Skipping - No admin token or form ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Specific Application Form",
+            "GET",
+            f"admin/application-forms/{self.created_form_id}",
+            200,
+            token=self.admin_token
+        )
+        if success:
+            print(f"   Form title: {response.get('title', 'Unknown')}")
+            print(f"   Form position: {response.get('position', 'Unknown')}")
+        return success
+
+    def test_update_application_form(self):
+        """Test updating an application form"""
+        if not self.admin_token or not self.created_form_id:
+            print("⚠️  Skipping - No admin token or form ID available")
+            return False
+
+        updated_form_data = {
+            "title": "Updated Staff Ansøgning Test",
+            "description": "Updated test ansøgning for staff rolle",
+            "position": "Senior Staff",
+            "webhook_url": "https://discord.com/api/webhooks/updated123",
+            "fields": [
+                {
+                    "label": "Dit fulde navn",
+                    "field_type": "text",
+                    "required": True,
+                    "placeholder": "Indtast dit fulde navn her"
+                }
+            ]
+        }
+        
+        success, response = self.run_test(
+            "Update Application Form",
+            "PUT",
+            f"admin/application-forms/{self.created_form_id}",
+            200,
+            data=updated_form_data,
+            token=self.admin_token
+        )
+        return success
+
+    def test_get_specific_submission(self):
+        """Test getting a specific submission"""
+        if not self.admin_token or not self.created_submission_id:
+            print("⚠️  Skipping - No admin token or submission ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Specific Submission",
+            "GET",
+            f"admin/submissions/{self.created_submission_id}",
+            200,
+            token=self.admin_token
+        )
+        if success:
+            print(f"   Applicant: {response.get('applicant_name', 'Unknown')}")
+            print(f"   Status: {response.get('status', 'Unknown')}")
+        return success
+
 def main():
     print("🚀 Starting Revolution RP Role-Based User System Tests")
     print("=" * 70)
