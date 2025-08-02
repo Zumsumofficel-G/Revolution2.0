@@ -14,12 +14,12 @@ class RevolutionRPAPITester:
         self.created_submission_id = None
         self.created_staff_username = None
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, auth_required=False):
+    def run_test(self, name, method, endpoint, expected_status, data=None, token=None):
         """Run a single API test"""
         url = f"{self.base_url}/{endpoint}"
         headers = {'Content-Type': 'application/json'}
-        if auth_required and self.token:
-            headers['Authorization'] = f'Bearer {self.token}'
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
 
         self.tests_run += 1
         print(f"\n🔍 Testing {name}...")
