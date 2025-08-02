@@ -6,12 +6,13 @@ from datetime import datetime
 class RevolutionRPAPITester:
     def __init__(self, base_url="https://dc72c7d2-1843-4123-8f8a-c0ac573233bd.preview.emergentagent.com/api"):
         self.base_url = base_url
-        self.token = None
-        self.discord_token = None
+        self.admin_token = None
+        self.staff_token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.created_form_id = None
         self.created_submission_id = None
+        self.created_staff_username = None
 
     def run_test(self, name, method, endpoint, expected_status, data=None, auth_required=False):
         """Run a single API test"""
