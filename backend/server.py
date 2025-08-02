@@ -315,7 +315,8 @@ async def init_default_admin():
         default_admin = AdminUser(
             username="admin",
             password_hash=hash_password("admin123"),
-            role="admin"
+            role="admin",
+            allowed_forms=[]  # Admin has access to all forms by default
         )
         await db.admin_users.insert_one(default_admin.dict())
         logging.info("Default admin user created: admin/admin123")
