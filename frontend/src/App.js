@@ -924,6 +924,9 @@ const AdminDashboard = () => {
             <Card className="bg-white/10 border-purple-500/20 text-white">
               <CardHeader>
                 <CardTitle>Seneste Ansøgninger</CardTitle>
+                <CardDescription className="text-gray-300">
+                  {user?.role === 'staff' ? 'Du har staff adgang - kan administrere indsendte ansøgninger' : 'Du har fuld admin adgang'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -945,17 +948,21 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="applications">
-            <ApplicationManager applications={applications} onUpdate={fetchApplications} />
-          </TabsContent>
+          {user?.is_admin && (
+            <TabsContent value="applications">
+              <ApplicationManager applications={applications} onUpdate={fetchApplications} />
+            </TabsContent>
+          )}
 
           <TabsContent value="submissions">
             <SubmissionManager submissions={submissions} onUpdate={fetchSubmissions} />
           </TabsContent>
 
-          <TabsContent value="settings">
-            <AdminSettings />
-          </TabsContent>
+          {user?.is_admin && (
+            <TabsContent value="settings">
+              <AdminSettings />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
