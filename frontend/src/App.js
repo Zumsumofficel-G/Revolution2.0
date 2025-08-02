@@ -620,25 +620,27 @@ const AdminDashboard = () => {
     fetchServerStats();
   }, []);
 
-  const fetchApplications = async () => {
+  const fetchApplications = () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(`${API}/admin/application-forms`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setApplications(response.data);
+      const apps = getApplications();
+      setApplications(apps);
     } catch (error) {
       console.error('Failed to fetch applications:', error);
     }
   };
 
-  const fetchSubmissions = async () => {
+  const fetchSubmissions = () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(`${API}/admin/submissions`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSubmissions(response.data);
+      const subs = getSubmissions();
+      // Filter based on user role
+      if (user?.role === 'admin') {
+        setSubmissions(subs);
+      } else if (user?.role === 'staff') {
+        const filteredSubs = subs.filter(sub => 
+          user.allowed_forms && user.allowed_forms.includes(sub.form_id)
+        );
+        setSubmissions(filteredSubs);
+      }
     } catch (error) {
       console.error('Failed to fetch submissions:', error);
     }
@@ -646,10 +648,21 @@ const AdminDashboard = () => {
 
   const fetchServerStats = async () => {
     try {
-      const response = await axios.get(`${API}/server-stats`);
-      setServerStats(response.data);
+      const response = await fetch("http://45.84.198.57:30120/dynamic.json");
+      const data = await response.json();
+      setServerStats({
+        players: data.clients || 0,
+        max_players: parseInt(data.sv_maxclients) || 64,
+        hostname: data.hostname || "Revolution Roleplay"
+      });
     } catch (error) {
       console.error('Failed to fetch server stats:', error);
+      // Use mock data
+      setServerStats({
+        players: 1,
+        max_players: 64,
+        hostname: "Revolution Roleplay"
+      });
     }
   };
 
