@@ -1456,10 +1456,13 @@ const ChangelogManager = () => {
     fetchChangelogsList();
   }, []);
 
-  const fetchChangelogsList = () => {
+  const fetchChangelogsList = async () => {
     try {
-      const logs = getChangelogs().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      setChangelogsState(logs);
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API_BASE_URL}/admin/changelogs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setChangelogsState(response.data);
     } catch (error) {
       console.error('Failed to fetch changelogs:', error);
     }
@@ -1467,17 +1470,10 @@ const ChangelogManager = () => {
 
   const handleCreateChangelog = async () => {
     try {
-      const changelogs = getChangelogs();
-      const newChangelogWithId = {
-        id: `changelog-${Date.now()}`,
-        ...newChangelog,
-        created_at: new Date().toISOString(),
-        created_by: "admin"
-      };
-      
-      changelogs.push(newChangelogWithId);
-      setChangelogs(changelogs);
-      
+      const token = localStorage.getItem('auth_token');
+      await axios.post(`${API_BASE_URL}/admin/changelogs`, newChangelog, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setIsCreateDialogOpen(false);
       setNewChangelog({ title: '', content: '', version: '' });
       fetchChangelogsList();
@@ -1489,19 +1485,14 @@ const ChangelogManager = () => {
 
   const handleEditChangelog = async () => {
     try {
-      const changelogs = getChangelogs();
-      const changelogIndex = changelogs.findIndex(log => log.id === editingChangelog.id);
-      
-      if (changelogIndex !== -1) {
-        changelogs[changelogIndex] = {
-          ...changelogs[changelogIndex],
-          title: editingChangelog.title,
-          content: editingChangelog.content,
-          version: editingChangelog.version
-        };
-        setChangelogs(changelogs);
-      }
-      
+      const token = localStorage.getItem('auth_token');
+      await axios.put(`${API_BASE_URL}/admin/changelogs/${editingChangelog.id}`, {
+        title: editingChangelog.title,
+        content: editingChangelog.content,
+        version: editingChangelog.version
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setIsEditDialogOpen(false);
       setEditingChangelog(null);
       fetchChangelogsList();
@@ -1515,9 +1506,10 @@ const ChangelogManager = () => {
     if (!window.confirm('Er du sikker på, at du vil slette denne changelog?')) return;
     
     try {
-      const changelogs = getChangelogs();
-      const filteredLogs = changelogs.filter(log => log.id !== changelogId);
-      setChangelogs(filteredLogs);
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(`${API_BASE_URL}/admin/changelogs/${changelogId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       fetchChangelogsList();
     } catch (error) {
       console.error('Failed to delete changelog:', error);
