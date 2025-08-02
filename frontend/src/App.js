@@ -230,6 +230,79 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* News and Updates Section */}
+      <section className="py-20 bg-black/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12">
+            {/* Discord News */}
+            <div>
+              <div className="text-center mb-8">
+                <h3 className="text-3xl font-bold text-white mb-4">Seneste Nyheder</h3>
+                <p className="text-gray-300">Opdateringer fra vores Discord</p>
+              </div>
+              
+              <div className="space-y-4">
+                {news.map((item) => (
+                  <Card key={item.id} className="bg-white/5 border-purple-500/20 text-white">
+                    <CardContent className="p-4">
+                      <div className="flex items-start space-x-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage 
+                            src={item.author_avatar ? 
+                              `https://cdn.discordapp.com/avatars/${item.id}/${item.author_avatar}.png` : 
+                              undefined
+                            } 
+                          />
+                          <AvatarFallback>{item.author_username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="font-semibold text-purple-300">{item.author_username}</span>
+                            <span className="text-sm text-gray-400">
+                              {new Date(item.timestamp).toLocaleDateString('da-DK')}
+                            </span>
+                          </div>
+                          <p className="text-gray-200">{item.content || "📎 Medie delt"}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Changelogs */}
+            <div>
+              <div className="text-center mb-8">
+                <h3 className="text-3xl font-bold text-white mb-4">Seneste Ændringer</h3>
+                <p className="text-gray-300">Server opdateringer og forbedringer</p>
+              </div>
+              
+              <div className="space-y-4">
+                {changelogs.map((changelog) => (
+                  <Card key={changelog.id} className="bg-white/5 border-purple-500/20 text-white">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="text-xl font-semibold text-purple-300">{changelog.title}</h4>
+                        {changelog.version && (
+                          <Badge variant="outline" className="border-purple-500 text-purple-300">
+                            v{changelog.version}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-gray-200 mb-3 whitespace-pre-line">{changelog.content}</p>
+                      <div className="text-sm text-gray-400">
+                        {new Date(changelog.created_at).toLocaleDateString('da-DK')} - {changelog.created_by}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Applications Section */}
       <section id="applications" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
