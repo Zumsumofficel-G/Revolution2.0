@@ -794,6 +794,12 @@ const AdminLogin = () => {
               {loading ? 'Logger ind...' : 'Log ind'}
             </Button>
           </form>
+          
+          <div className="mt-4 text-center">
+            <Link to="/" className="text-purple-400 hover:text-purple-300 text-sm">
+              ← Tilbage til forsiden
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
