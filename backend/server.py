@@ -229,6 +229,21 @@ async def require_staff_or_admin_access(current_user = Depends(get_current_user)
     else:
         raise HTTPException(status_code=403, detail="Staff or admin access required")
 
+async def require_form_access(form_id: str, current_user = Depends(get_current_user)):
+    """Check if user has access to specific form"""
+    if current_user["type"] == "admin":
+        user = current_user["user"]
+        # Admin role has access to all forms
+        if user.role == "admin":
+            return user
+        # Staff role needs specific form access
+        elif user.role == "staff" and form_id in user.allowed_forms:
+            return user
+    elif current_user["type"] == "discord" and current_user["user"].is_admin:
+        return current_user["user"]
+    
+    raise HTTPException(status_code=403, detail="Access denied for this form")
+
 # Discord API helper functions
 async def get_discord_user_info(access_token: str):
     """Get Discord user info from access token"""
