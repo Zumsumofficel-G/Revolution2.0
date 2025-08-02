@@ -783,11 +783,442 @@ const AdminDashboard = () => {
   );
 };
 
-// Rest of components will continue in next message due to length...
 // Application Manager Component
 const ApplicationManager = ({ applications, onUpdate }) => {
-  // Implementation continues as before...
-  return <div className="text-white">Application Manager - Implementation continues</div>;
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingForm, setEditingForm] = useState(null);
+  const [newForm, setNewForm] = useState({
+    title: '',
+    description: '',
+    position: '',
+    fields: [],
+    webhook_url: ''
+  });
+
+  const addField = (isEditing = false) => {
+    const field = {
+      id: Date.now().toString(),
+      label: '',
+      field_type: 'text',
+      options: [],
+      required: false,
+      placeholder: ''
+    };
+    
+    if (isEditing) {
+      setEditingForm(prev => ({
+        ...prev,
+        fields: [...prev.fields, field]
+      }));
+    } else {
+      setNewForm(prev => ({
+        ...prev,
+        fields: [...prev.fields, field]
+      }));
+    }
+  };
+
+  const updateField = (index, updatedField, isEditing = false) => {
+    if (isEditing) {
+      setEditingForm(prev => ({
+        ...prev,
+        fields: prev.fields.map((field, i) => i === index ? updatedField : field)
+      }));
+    } else {
+      setNewForm(prev => ({
+        ...prev,
+        fields: prev.fields.map((field, i) => i === index ? updatedField : field)
+      }));
+    }
+  };
+
+  const removeField = (index, isEditing = false) => {
+    if (isEditing) {
+      setEditingForm(prev => ({
+        ...prev,
+        fields: prev.fields.filter((_, i) => i !== index)
+      }));
+    } else {
+      setNewForm(prev => ({
+        ...prev,
+        fields: prev.fields.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const handleCreateForm = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.post(`${API}/admin/application-forms`, newForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsCreateDialogOpen(false);
+      setNewForm({
+        title: '',
+        description: '',
+        position: '',
+        fields: [],
+        webhook_url: ''
+      });
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to create form:', error);
+      alert('Fejl ved oprettelse af ansøgningsformular');
+    }
+  };
+
+  const handleEditForm = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.put(`${API}/admin/application-forms/${editingForm.id}`, {
+        title: editingForm.title,
+        description: editingForm.description,
+        position: editingForm.position,
+        fields: editingForm.fields,
+        webhook_url: editingForm.webhook_url
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsEditDialogOpen(false);
+      setEditingForm(null);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to update form:', error);
+      alert('Fejl ved opdatering af ansøgningsformular');
+    }
+  };
+
+  const handleDeleteForm = async (formId) => {
+    if (!confirm('Er du sikker på, at du vil slette denne ansøgningsformular?')) return;
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(`${API}/admin/application-forms/${formId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to delete form:', error);
+      alert('Fejl ved sletning af ansøgningsformular');
+    }
+  };
+
+  const openEditDialog = (form) => {
+    setEditingForm({ ...form });
+    setIsEditDialogOpen(true);
+  };
+
+  const renderFieldEditor = (field, index, isEditing = false) => {
+    const currentForm = isEditing ? editingForm : newForm;
+    
+    return (
+      <div key={field.id} className="p-4 bg-white/5 rounded-lg space-y-4">
+        <div className="flex justify-between items-center">
+          <h4 className="text-lg font-semibold text-white">Felt {index + 1}</h4>
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => removeField(index, isEditing)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-white">Felt label</Label>
+            <Input
+              value={field.label}
+              onChange={(e) => updateField(index, { ...field, label: e.target.value }, isEditing)}
+              className="bg-white/5 border-purple-500/30 text-white"
+            />
+          </div>
+          
+          <div>
+            <Label className="text-white">Felt type</Label>
+            <Select 
+              value={field.field_type} 
+              onValueChange={(value) => updateField(index, { ...field, field_type: value }, isEditing)}
+            >
+              <SelectTrigger className="bg-white/5 border-purple-500/30 text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">Tekst</SelectItem>
+                <SelectItem value="textarea">Tekstområde</SelectItem>
+                <SelectItem value="select">Dropdown</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        <div>
+          <Label className="text-white">Placeholder tekst</Label>
+          <Input
+            value={field.placeholder || ''}
+            onChange={(e) => updateField(index, { ...field, placeholder: e.target.value }, isEditing)}
+            className="bg-white/5 border-purple-500/30 text-white"
+          />
+        </div>
+        
+        {field.field_type === 'select' && (
+          <div>
+            <Label className="text-white">Valgmuligheder (en per linje)</Label>
+            <Textarea
+              value={field.options?.join('\n') || ''}
+              onChange={(e) => updateField(index, { 
+                ...field, 
+                options: e.target.value.split('\n').filter(opt => opt.trim()) 
+              }, isEditing)}
+              className="bg-white/5 border-purple-500/30 text-white"
+              rows={3}
+            />
+          </div>
+        )}
+        
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id={`required-${field.id}`}
+            checked={field.required}
+            onChange={(e) => updateField(index, { ...field, required: e.target.checked }, isEditing)}
+          />
+          <Label htmlFor={`required-${field.id}`} className="text-white">Påkrævet felt</Label>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Ansøgningsformularer</h2>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-purple-600 hover:bg-purple-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Ny Ansøgning
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Opret ny ansøgningsformular</DialogTitle>
+              <DialogDescription className="text-gray-300">
+                Udfyld formularen for at oprette en ny ansøgning
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-white">Titel</Label>
+                  <Input
+                    value={newForm.title}
+                    onChange={(e) => setNewForm({...newForm, title: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-white">Position</Label>
+                  <Input
+                    value={newForm.position}
+                    onChange={(e) => setNewForm({...newForm, position: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-white">Beskrivelse</Label>
+                <Textarea
+                  value={newForm.description}
+                  onChange={(e) => setNewForm({...newForm, description: e.target.value})}
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  rows={3}
+                />
+              </div>
+              
+              <div>
+                <Label className="text-white">Discord Webhook URL (valgfri)</Label>
+                <Input
+                  value={newForm.webhook_url}
+                  onChange={(e) => setNewForm({...newForm, webhook_url: e.target.value})}
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  placeholder="https://discord.com/api/webhooks/..."
+                />
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <Label className="text-white text-lg">Formular felter</Label>
+                  <Button onClick={() => addField()} variant="outline" className="border-purple-500 text-purple-300">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tilføj felt
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  {newForm.fields.map((field, index) => renderFieldEditor(field, index))}
+                </div>
+              </div>
+              
+              <div className="flex space-x-4">
+                <Button 
+                  onClick={() => setIsCreateDialogOpen(false)} 
+                  variant="outline"
+                  className="flex-1 border-gray-500 text-gray-300"
+                >
+                  Annuller
+                </Button>
+                <Button 
+                  onClick={handleCreateForm}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  disabled={!newForm.title || !newForm.position || newForm.fields.length === 0}
+                >
+                  Opret ansøgning
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid gap-6">
+        {applications.map((app) => (
+          <Card key={app.id} className="bg-white/10 border-purple-500/20 text-white">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-xl">{app.title}</CardTitle>
+                  <CardDescription className="text-gray-300">{app.description}</CardDescription>
+                  <Badge variant="secondary" className="bg-purple-600/20 text-purple-300 mt-2">
+                    {app.position}
+                  </Badge>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => openEditDialog(app)}
+                    className="border-purple-500 text-purple-300"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => handleDeleteForm(app.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-400">{app.fields.length} felter</p>
+                <p className="text-sm text-gray-400">
+                  Oprettet: {new Date(app.created_at).toLocaleDateString('da-DK')}
+                </p>
+                {app.webhook_url && (
+                  <p className="text-sm text-green-400">✓ Discord webhook konfigureret</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Rediger ansøgningsformular</DialogTitle>
+            <DialogDescription className="text-gray-300">
+              Opdater formularen efter behov
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingForm && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-white">Titel</Label>
+                  <Input
+                    value={editingForm.title}
+                    onChange={(e) => setEditingForm({...editingForm, title: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-white">Position</Label>
+                  <Input
+                    value={editingForm.position}
+                    onChange={(e) => setEditingForm({...editingForm, position: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-white">Beskrivelse</Label>
+                <Textarea
+                  value={editingForm.description}
+                  onChange={(e) => setEditingForm({...editingForm, description: e.target.value})}
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  rows={3}
+                />
+              </div>
+              
+              <div>
+                <Label className="text-white">Discord Webhook URL (valgfri)</Label>
+                <Input
+                  value={editingForm.webhook_url || ''}
+                  onChange={(e) => setEditingForm({...editingForm, webhook_url: e.target.value})}
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  placeholder="https://discord.com/api/webhooks/..."
+                />
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <Label className="text-white text-lg">Formular felter</Label>
+                  <Button onClick={() => addField(true)} variant="outline" className="border-purple-500 text-purple-300">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tilføj felt
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  {editingForm.fields.map((field, index) => renderFieldEditor(field, index, true))}
+                </div>
+              </div>
+              
+              <div className="flex space-x-4">
+                <Button 
+                  onClick={() => setIsEditDialogOpen(false)} 
+                  variant="outline"
+                  className="flex-1 border-gray-500 text-gray-300"
+                >
+                  Annuller
+                </Button>
+                <Button 
+                  onClick={handleEditForm}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  disabled={!editingForm.title || !editingForm.position || editingForm.fields.length === 0}
+                >
+                  Gem ændringer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 };
 
 // Submission Manager Component  
