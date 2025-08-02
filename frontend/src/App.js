@@ -647,31 +647,510 @@ const AdminDashboard = () => {
   );
 };
 
-// Application Manager Component (to be implemented)
+// Application Manager Component
 const ApplicationManager = ({ applications, onUpdate }) => {
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingApp, setEditingApp] = useState(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    position: '',
+    fields: [],
+    webhook_url: ''
+  });
+
+  const fieldTypes = [
+    { value: 'text', label: 'Tekst' },
+    { value: 'textarea', label: 'Tekstboks' },
+    { value: 'select', label: 'Dropdown' },
+    { value: 'radio', label: 'Radio knapper' },
+    { value: 'checkbox', label: 'Checkboxe' }
+  ];
+
+  const addField = () => {
+    const newField = {
+      id: Date.now().toString(),
+      label: '',
+      field_type: 'text',
+      options: [],
+      required: false,
+      placeholder: ''
+    };
+    setFormData(prev => ({
+      ...prev,
+      fields: [...prev.fields, newField]
+    }));
+  };
+
+  const updateField = (fieldId, updates) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(field =>
+        field.id === fieldId ? { ...field, ...updates } : field
+      )
+    }));
+  };
+
+  const removeField = (fieldId) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.filter(field => field.id !== fieldId)
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const url = editingApp ? 
+        `${API}/admin/application-forms/${editingApp.id}` : 
+        `${API}/admin/application-forms`;
+      const method = editingApp ? 'PUT' : 'POST';
+
+      await axios({
+        method,
+        url,
+        data: formData,
+        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+      });
+
+      onUpdate();
+      setIsCreating(false);
+      setEditingApp(null);
+      setFormData({ title: '', description: '', position: '', fields: [], webhook_url: '' });
+    } catch (error) {
+      console.error('Failed to save application:', error);
+      alert('Fejl ved gem af ansøgning');
+    }
+  };
+
+  const deleteApplication = async (id) => {
+    if (confirm('Er du sikker på at du vil slette denne ansøgning?')) {
+      try {
+        await axios.delete(`${API}/admin/application-forms/${id}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+        });
+        onUpdate();
+      } catch (error) {
+        console.error('Failed to delete application:', error);
+      }
+    }
+  };
+
+  const startEdit = (app) => {
+    setEditingApp(app);
+    setFormData(app);
+    setIsCreating(true);
+  };
+
+  if (isCreating) {
+    return (
+      <Card className="bg-white/10 border-purple-500/20 text-white">
+        <CardHeader>
+          <CardTitle>{editingApp ? 'Rediger Ansøgning' : 'Opret Ny Ansøgning'}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label>Titel</Label>
+                <Input
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  required
+                  className="bg-white/5 border-purple-500/30 text-white"
+                />
+              </div>
+              <div>
+                <Label>Position</Label>
+                <Input
+                  value={formData.position}
+                  onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+                  required
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  placeholder="f.eks. Staff, Moderator, Developer"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Beskrivelse</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                required
+                className="bg-white/5 border-purple-500/30 text-white"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label>Discord Webhook URL</Label>
+              <Input
+                value={formData.webhook_url}
+                onChange={(e) => setFormData(prev => ({ ...prev, webhook_url: e.target.value }))}
+                className="bg-white/5 border-purple-500/30 text-white"
+                placeholder="https://discord.com/api/webhooks/..."
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <Label className="text-lg">Formular Felter</Label>
+                <Button type="button" onClick={addField} size="sm" className="bg-purple-600 hover:bg-purple-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tilføj Felt
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {formData.fields.map((field) => (
+                  <Card key={field.id} className="bg-white/5 border-purple-500/20 p-4">
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div>
+                        <Label>Label</Label>
+                        <Input
+                          value={field.label}
+                          onChange={(e) => updateField(field.id, { label: e.target.value })}
+                          className="bg-white/5 border-purple-500/30 text-white"
+                        />
+                      </div>
+                      <div>
+                        <Label>Felttype</Label>
+                        <Select 
+                          value={field.field_type} 
+                          onValueChange={(value) => updateField(field.id, { field_type: value })}
+                        >
+                          <SelectTrigger className="bg-white/5 border-purple-500/30 text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {fieldTypes.map(type => (
+                              <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end space-x-2">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={field.required}
+                            onChange={(e) => updateField(field.id, { required: e.target.checked })}
+                            className="rounded"
+                          />
+                          <Label className="text-sm">Påkrævet</Label>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => removeField(field.id)}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {field.field_type === 'text' && (
+                      <div className="mt-4">
+                        <Label>Placeholder</Label>
+                        <Input
+                          value={field.placeholder || ''}
+                          onChange={(e) => updateField(field.id, { placeholder: e.target.value })}
+                          className="bg-white/5 border-purple-500/30 text-white"
+                        />
+                      </div>
+                    )}
+
+                    {(field.field_type === 'select' || field.field_type === 'radio') && (
+                      <div className="mt-4">
+                        <Label>Valgmuligheder (én per linje)</Label>
+                        <Textarea
+                          value={(field.options || []).join('\n')}
+                          onChange={(e) => updateField(field.id, { 
+                            options: e.target.value.split('\n').filter(opt => opt.trim()) 
+                          })}
+                          className="bg-white/5 border-purple-500/30 text-white"
+                          placeholder="Mulighed 1\nMulighed 2\nMulighed 3"
+                        />
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsCreating(false);
+                  setEditingApp(null);
+                  setFormData({ title: '', description: '', position: '', fields: [], webhook_url: '' });
+                }}
+                className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
+              >
+                Annuller
+              </Button>
+              <Button type="submit" className="flex-1 bg-purple-600 hover:bg-purple-700">
+                {editingApp ? 'Opdater' : 'Opret'} Ansøgning
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div className="text-white">
-      <p>Application Manager - To be implemented</p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Ansøgninger</h2>
+        <Button onClick={() => setIsCreating(true)} className="bg-purple-600 hover:bg-purple-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Ny Ansøgning
+        </Button>
+      </div>
+
+      <div className="grid gap-4">
+        {applications.map((app) => (
+          <Card key={app.id} className="bg-white/10 border-purple-500/20 text-white">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold mb-2">{app.title}</h3>
+                  <p className="text-gray-300 mb-2">{app.description}</p>
+                  <Badge variant="secondary" className="bg-purple-600/20 text-purple-300 mb-2">
+                    {app.position}
+                  </Badge>
+                  <div className="text-sm text-gray-400">
+                    {app.fields.length} felter • Oprettet {new Date(app.created_at).toLocaleDateString('da-DK')}
+                  </div>
+                  {app.webhook_url && (
+                    <div className="text-sm text-green-400 mt-1">✓ Discord webhook konfigureret</div>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => startEdit(app)}
+                    size="sm"
+                    variant="outline"
+                    className="border-purple-500 text-purple-300 hover:bg-purple-500/20"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => deleteApplication(app.id)}
+                    size="sm"
+                    variant="destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };
 
-// Submission Manager Component (to be implemented)  
+// Submission Manager Component
 const SubmissionManager = ({ submissions, onUpdate }) => {
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+
+  const updateStatus = async (submissionId, status) => {
+    try {
+      await axios.put(`${API}/admin/submissions/${submissionId}/status`, { status }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+      });
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved': return 'text-green-400';
+      case 'rejected': return 'text-red-400';
+      default: return 'text-yellow-400';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'approved': return 'Godkendt';
+      case 'rejected': return 'Afvist';
+      default: return 'Afventer';
+    }
+  };
+
   return (
-    <div className="text-white">
-      <p>Submission Manager - To be implemented</p>
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-white">Indsendte Ansøgninger</h2>
+
+      <Card className="bg-white/10 border-purple-500/20">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-purple-500/20">
+                <TableHead className="text-white">Navn</TableHead>
+                <TableHead className="text-white">Ansøgning</TableHead>
+                <TableHead className="text-white">Indsendt</TableHead>
+                <TableHead className="text-white">Status</TableHead>
+                <TableHead className="text-white">Handlinger</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {submissions.map((submission) => (
+                <TableRow key={submission.id} className="border-purple-500/20 text-white">
+                  <TableCell className="font-medium">{submission.applicant_name}</TableCell>
+                  <TableCell>Form ID: {submission.form_id.slice(0, 8)}...</TableCell>
+                  <TableCell>{new Date(submission.submitted_at).toLocaleDateString('da-DK')}</TableCell>
+                  <TableCell>
+                    <Badge className={`${getStatusColor(submission.status)} bg-transparent border`}>
+                      {getStatusText(submission.status)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={() => setSelectedSubmission(submission)}
+                        size="sm"
+                        variant="outline"
+                        className="border-purple-500 text-purple-300 hover:bg-purple-500/20"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {submission.status === 'pending' && (
+                        <>
+                          <Button
+                            onClick={() => updateStatus(submission.id, 'approved')}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Godkend
+                          </Button>
+                          <Button
+                            onClick={() => updateStatus(submission.id, 'rejected')}
+                            size="sm"
+                            variant="destructive"
+                          >
+                            Afvis
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Submission Detail Dialog */}
+      <Dialog open={!!selectedSubmission} onOpenChange={() => setSelectedSubmission(null)}>
+        <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Ansøgningsdetaljer</DialogTitle>
+            <DialogDescription className="text-gray-300">
+              Ansøgning fra {selectedSubmission?.applicant_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {selectedSubmission && Object.entries(selectedSubmission.responses).map(([fieldId, response]) => (
+              <div key={fieldId} className="p-4 bg-white/5 rounded-lg">
+                <div className="text-sm text-gray-400 mb-2">Felt ID: {fieldId}</div>
+                <div className="text-white">{Array.isArray(response) ? response.join(', ') : response}</div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-// Admin Settings Component (to be implemented)
+// Admin Settings Component
 const AdminSettings = () => {
+  const [newAdmin, setNewAdmin] = useState({ username: '', password: '' });
+  const [loading, setLoading] = useState(false);
+
+  const createAdmin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.post(`${API}/admin/create-admin`, newAdmin, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+      });
+      setNewAdmin({ username: '', password: '' });
+      alert('Admin bruger oprettet successfully!');
+    } catch (error) {
+      console.error('Failed to create admin:', error);
+      alert('Fejl ved oprettelse af admin bruger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="text-white">
-      <p>Admin Settings - To be implemented</p>
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-white">Indstillinger</h2>
+
+      <Card className="bg-white/10 border-purple-500/20 text-white">
+        <CardHeader>
+          <CardTitle>Opret Ny Admin</CardTitle>
+          <CardDescription className="text-gray-300">
+            Opret en ny administrator konto
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={createAdmin} className="space-y-4">
+            <div>
+              <Label>Brugernavn</Label>
+              <Input
+                value={newAdmin.username}
+                onChange={(e) => setNewAdmin(prev => ({ ...prev, username: e.target.value }))}
+                required
+                className="bg-white/5 border-purple-500/30 text-white"
+              />
+            </div>
+            <div>
+              <Label>Adgangskode</Label>
+              <Input
+                type="password"
+                value={newAdmin.password}
+                onChange={(e) => setNewAdmin(prev => ({ ...prev, password: e.target.value }))}
+                required
+                className="bg-white/5 border-purple-500/30 text-white"
+              />
+            </div>
+            <Button type="submit" disabled={loading} className="bg-purple-600 hover:bg-purple-700">
+              {loading ? 'Opretter...' : 'Opret Admin'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/10 border-purple-500/20 text-white">
+        <CardHeader>
+          <CardTitle>Server Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm">
+            <div>Default Admin: admin / admin123</div>
+            <div>FiveM Server API: http://45.84.198.57:30120/dynamic.json</div>
+            <div>Webhook Format: Discord</div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
+};
 };
 
 // Protected Route Component
