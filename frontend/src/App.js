@@ -1578,13 +1578,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<DiscordLogin />} />
             <Route path="/apply/:id" element={<ApplicationForm />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <UserDashboard />
-              </ProtectedRoute>
-            } />
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={
               <ProtectedRoute requireAdmin={true}>
