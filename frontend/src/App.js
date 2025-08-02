@@ -71,7 +71,6 @@ const AuthProvider = ({ children }) => {
 const LandingPage = () => {
   const [serverStats, setServerStats] = useState({ players: 0, max_players: 64, hostname: "Revolution Roleplay" });
   const [applications, setApplications] = useState([]);
-  const [news, setNews] = useState([]);
   const [changelogs, setChangelogs] = useState([]);
 
   useEffect(() => {
@@ -93,19 +92,10 @@ const LandingPage = () => {
       }
     };
 
-    const fetchNews = async () => {
-      try {
-        const response = await axios.get(`${API}/discord/news`);
-        setNews(response.data.slice(0, 5));
-      } catch (error) {
-        console.error("Failed to fetch news:", error);
-      }
-    };
-
     const fetchChangelogs = async () => {
       try {
         const response = await axios.get(`${API}/changelogs`);
-        setChangelogs(response.data.slice(0, 3));
+        setChangelogs(response.data.slice(0, 5));
       } catch (error) {
         console.error("Failed to fetch changelogs:", error);
       }
@@ -113,13 +103,12 @@ const LandingPage = () => {
 
     fetchServerStats();
     fetchApplications();
-    fetchNews();
     fetchChangelogs();
 
     const interval = setInterval(() => {
       fetchServerStats();
       fetchApplications();
-      fetchNews();
+      fetchChangelogs();
     }, 30000);
     
     return () => clearInterval(interval);
