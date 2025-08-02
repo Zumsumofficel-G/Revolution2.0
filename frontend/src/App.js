@@ -805,7 +805,7 @@ const ApplicationForm = () => {
   );
 };
 
-// Legacy Admin Login (keeping for backwards compatibility)
+// Admin Login
 const AdminLogin = () => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -837,8 +837,8 @@ const AdminLogin = () => {
             alt="Revolution RP" 
             className="h-16 w-16 mx-auto mb-4"
           />
-          <CardTitle className="text-2xl text-white">Legacy Admin Panel</CardTitle>
-          <CardDescription className="text-gray-300">Log ind med admin kredentiealer</CardDescription>
+          <CardTitle className="text-2xl text-white">Admin Panel</CardTitle>
+          <CardDescription className="text-gray-300">Log ind for at administrere serveren</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -872,12 +872,6 @@ const AdminLogin = () => {
               {loading ? 'Logger ind...' : 'Log ind'}
             </Button>
           </form>
-          
-          <div className="mt-4 text-center">
-            <Link to="/login" className="text-indigo-400 hover:text-indigo-300 text-sm">
-              ← Tilbage til Discord Login
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </div>
