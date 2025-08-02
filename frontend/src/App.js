@@ -1516,8 +1516,198 @@ const SubmissionManager = ({ submissions, onUpdate }) => {
   );
 };
 
-// Admin Settings Component 
-const AdminSettings = () => {
+// Changelog Manager Component
+const ChangelogManager = () => {
+  const [changelogs, setChangelogs] = useState([]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingLog, setEditingLog] = useState(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    version: ''
+  });
+
+  useEffect(() => {
+    fetchChangelogs();
+  }, []);
+
+  const fetchChangelogs = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API}/admin/changelogs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setChangelogs(response.data);
+    } catch (error) {
+      console.error('Failed to fetch changelogs:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('auth_token');
+      const url = editingLog ? 
+        `${API}/admin/changelogs/${editingLog.id}` : 
+        `${API}/admin/changelogs`;
+      const method = editingLog ? 'PUT' : 'POST';
+
+      await axios({
+        method,
+        url,
+        data: formData,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      fetchChangelogs();
+      setIsCreating(false);
+      setEditingLog(null);
+      setFormData({ title: '', content: '', version: '' });
+    } catch (error) {
+      console.error('Failed to save changelog:', error);
+      alert('Fejl ved gem af changelog');
+    }
+  };
+
+  const deleteChangelog = async (id) => {
+    if (confirm('Er du sikker på at du vil slette denne changelog?')) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        await axios.delete(`${API}/admin/changelogs/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        fetchChangelogs();
+      } catch (error) {
+        console.error('Failed to delete changelog:', error);
+      }
+    }
+  };
+
+  const startEdit = (log) => {
+    setEditingLog(log);
+    setFormData(log);
+    setIsCreating(true);
+  };
+
+  if (isCreating) {
+    return (
+      <Card className="bg-white/10 border-purple-500/20 text-white">
+        <CardHeader>
+          <CardTitle>{editingLog ? 'Rediger Changelog' : 'Opret Ny Changelog'}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label>Titel</Label>
+                <Input
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  required
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  placeholder="f.eks. Server Opdatering"
+                />
+              </div>
+              <div>
+                <Label>Version (valgfri)</Label>
+                <Input
+                  value={formData.version}
+                  onChange={(e) => setFormData(prev => ({ ...prev, version: e.target.value }))}
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  placeholder="f.eks. 2.1.0"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Indhold</Label>
+              <Textarea
+                value={formData.content}
+                onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                required
+                className="bg-white/5 border-purple-500/30 text-white"
+                rows={6}
+                placeholder="Beskriv ændringerne..."
+              />
+            </div>
+
+            <div className="flex space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsCreating(false);
+                  setEditingLog(null);
+                  setFormData({ title: '', content: '', version: '' });
+                }}
+                className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
+              >
+                Annuller
+              </Button>
+              <Button type="submit" className="flex-1 bg-purple-600 hover:bg-purple-700">
+                {editingLog ? 'Opdater' : 'Opret'} Changelog
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Changelog Styring</h2>
+        <Button onClick={() => setIsCreating(true)} className="bg-purple-600 hover:bg-purple-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Ny Changelog
+        </Button>
+      </div>
+
+      <div className="grid gap-4">
+        {changelogs.map((log) => (
+          <Card key={log.id} className="bg-white/10 border-purple-500/20 text-white">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h3 className="text-xl font-semibold">{log.title}</h3>
+                    {log.version && (
+                      <Badge variant="outline" className="border-purple-500 text-purple-300">
+                        v{log.version}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-gray-300 mb-2 whitespace-pre-line">{log.content}</p>
+                  <div className="text-sm text-gray-400">
+                    Oprettet {new Date(log.created_at).toLocaleDateString('da-DK')} af {log.created_by}
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => startEdit(log)}
+                    size="sm"
+                    variant="outline"
+                    className="border-purple-500 text-purple-300 hover:bg-purple-500/20"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => deleteChangelog(log.id)}
+                    size="sm"
+                    variant="destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
   const [newUser, setNewUser] = useState({ username: '', password: '', role: 'staff' });
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
