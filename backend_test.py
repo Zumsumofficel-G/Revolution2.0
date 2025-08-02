@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 class RevolutionRPAPITester:
-    def __init__(self, base_url="https://dc72c7d2-1843-4123-8f8a-c0ac573233bd.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://1dd055fe-5269-4816-a104-0e822c872d5b.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.admin_token = None
         self.staff_token = None

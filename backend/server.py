@@ -32,7 +32,7 @@ DISCORD_CLIENT_SECRET = os.environ['DISCORD_CLIENT_SECRET']
 DISCORD_GUILD_ID = os.environ['DISCORD_GUILD_ID']
 DISCORD_ADMIN_ROLE_ID = os.environ['DISCORD_ADMIN_ROLE_ID']
 DISCORD_CHANNEL_ID = os.environ['DISCORD_CHANNEL_ID']
-DISCORD_REDIRECT_URI = "https://dc72c7d2-1843-4123-8f8a-c0ac573233bd.preview.emergentagent.com/api/auth/discord/callback"
+DISCORD_REDIRECT_URI = "https://1dd055fe-5269-4816-a104-0e822c872d5b.preview.emergentagent.com/api/auth/discord/callback"
 
 # Create the main app without a prefix
 app = FastAPI()
