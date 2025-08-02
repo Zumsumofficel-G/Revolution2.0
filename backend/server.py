@@ -724,7 +724,17 @@ async def submit_application(submission: ApplicationSubmit):
 # Admin application management
 @api_router.get("/admin/submissions", response_model=List[ApplicationSubmission])
 async def get_admin_submissions(current_admin = Depends(require_staff_or_admin_access)):
-    submissions = await db.application_submissions.find().sort("submitted_at", -1).to_list(1000)
+    if current_admin.role == "admin":
+        # Admin sees all submissions
+        submissions = await db.application_submissions.find().sort("submitted_at", -1).to_list(1000)
+    else:
+        # Staff sees only submissions for forms they have access to
+        if not current_admin.allowed_forms:
+            return []  # No forms assigned
+        submissions = await db.application_submissions.find({
+            "form_id": {"$in": current_admin.allowed_forms}
+        }).sort("submitted_at", -1).to_list(1000)
+    
     return [ApplicationSubmission(**sub) for sub in submissions]
 
 @api_router.get("/admin/submissions/{submission_id}", response_model=ApplicationSubmission)
@@ -732,16 +742,31 @@ async def get_admin_submission(submission_id: str, current_admin = Depends(requi
     submission = await db.application_submissions.find_one({"id": submission_id})
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
+    
+    # Check form access for staff
+    if current_admin.role == "staff":
+        if submission["form_id"] not in current_admin.allowed_forms:
+            raise HTTPException(status_code=403, detail="Access denied for this submission")
+    
     return ApplicationSubmission(**submission)
 
 @api_router.put("/admin/submissions/{submission_id}/status")
 async def update_submission_status(submission_id: str, status: dict, current_admin = Depends(require_staff_or_admin_access)):
+    # First get the submission to check form access
+    submission = await db.application_submissions.find_one({"id": submission_id})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    
+    # Check form access for staff
+    if current_admin.role == "staff":
+        if submission["form_id"] not in current_admin.allowed_forms:
+            raise HTTPException(status_code=403, detail="Access denied for this submission")
+    
     result = await db.application_submissions.update_one(
         {"id": submission_id},
         {"$set": {"status": status.get("status", "pending")}}
     )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Submission not found")
+    
     return {"message": "Status updated successfully"}
 
 # Include the router in the main app
