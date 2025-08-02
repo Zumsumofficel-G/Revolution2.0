@@ -12,6 +12,7 @@ class RevolutionRPAPITester:
         self.tests_passed = 0
         self.created_form_id = None
         self.created_submission_id = None
+        self.created_changelog_id = None
         self.created_staff_username = f"teststaff_{datetime.now().strftime('%H%M%S')}"
 
     def run_test(self, name, method, endpoint, expected_status, data=None, token=None):
