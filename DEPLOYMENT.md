@@ -1,8 +1,8 @@
-# Revolution Roleplay - Vercel Deployment
+# Revolution Roleplay - Simply Hosting Deployment
 
 ## Deployment Guide
 
-Denne applikation er nu konfigureret til deployment på Vercel som en statisk React applikation.
+Denne applikation er nu konfigureret til deployment på Simply som en statisk React applikation.
 
 ### Funktioner
 - ✅ Fuldt statisk React applikation 
@@ -14,26 +14,27 @@ Denne applikation er nu konfigureret til deployment på Vercel som en statisk Re
 - ✅ Application management system
 - ✅ Changelog system
 
-### Deployment på Vercel
+### Deployment på Simply
 
-1. **Push til GitHub:**
+1. **Build applikationen:**
    ```bash
-   git add .
-   git commit -m "Klar til Vercel deployment"
-   git push origin main
+   cd frontend
+   npm install
+   npm run build
    ```
 
-2. **Connect til Vercel:**
-   - Gå til [vercel.com](https://vercel.com)
-   - Import dit GitHub repository
-   - Vælg `frontend` som root directory
-   - Deploy automatisk
+2. **Upload til Simply:**
+   - Log ind på dit Simply kontrolpanel
+   - Gå til File Manager eller brug FTP
+   - Upload hele indholdet fra `build/` mappen til din website rod (public_html)
+   - Sørg for at `.htaccess` filen også uploades
 
-3. **Alternativ - Vercel CLI:**
+3. **FTP Upload (alternativ):**
    ```bash
-   npm i -g vercel
-   cd frontend
-   vercel --prod
+   # Brug din FTP klient til at uploade build/ indhold til:
+   # Host: ftp.simply.com (eller dit subdomain)
+   # Port: 21
+   # Upload til: /public_html/
    ```
 
 ### Standard Login
@@ -60,4 +61,11 @@ npm install
 npm start
 ```
 
-Applikation kører på http://localhost:3000
+### Vigtige Noter
+- `.htaccess` filen håndterer SPA routing på Apache servere
+- Alle React routes vil fungere korrekt
+- Applikationen er optimeret til danske hosting udbydere
+- Sikkerhedsheaders er inkluderet i .htaccess
+
+### Support
+Hvis du har problemer med deployment, kontakt Simply support og reference at det er en React Single Page Application (SPA).
