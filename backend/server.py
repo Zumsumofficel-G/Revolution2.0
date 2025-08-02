@@ -458,6 +458,7 @@ async def create_user(admin_data: AdminCreate, current_admin = Depends(require_a
         username=admin_data.username,
         password_hash=hash_password(admin_data.password),
         role=admin_data.role,
+        allowed_forms=admin_data.allowed_forms,
         created_by=getattr(current_admin, 'username', 'discord_user')
     )
     
