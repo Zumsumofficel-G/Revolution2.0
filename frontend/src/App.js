@@ -1261,12 +1261,18 @@ const SubmissionManager = ({ submissions, onUpdate }) => {
 
   const handleViewSubmission = async (submissionId) => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(`${API}/admin/submissions/${submissionId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSelectedSubmission(response.data);
-      setIsViewDialogOpen(true);
+      const submissions = getSubmissions();
+      const submission = submissions.find(sub => sub.id === submissionId);
+      
+      if (submission) {
+        // Check if user has access to this submission
+        if (user?.role === 'staff' && user.allowed_forms && !user.allowed_forms.includes(submission.form_id)) {
+          alert('Du har ikke adgang til denne ansøgning');
+          return;
+        }
+        setSelectedSubmission(submission);
+        setIsViewDialogOpen(true);
+      }
     } catch (error) {
       console.error('Failed to fetch submission:', error);
       alert('Fejl ved hentning af ansøgning');
@@ -1275,14 +1281,24 @@ const SubmissionManager = ({ submissions, onUpdate }) => {
 
   const handleUpdateStatus = async (submissionId, newStatus) => {
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.put(`${API}/admin/submissions/${submissionId}/status`, 
-        { status: newStatus }, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      onUpdate();
-      if (selectedSubmission && selectedSubmission.id === submissionId) {
-        setSelectedSubmission(prev => ({ ...prev, status: newStatus }));
+      const submissions = getSubmissions();
+      const submissionIndex = submissions.findIndex(sub => sub.id === submissionId);
+      
+      if (submissionIndex !== -1) {
+        // Check if user has access to this submission
+        const submission = submissions[submissionIndex];
+        if (user?.role === 'staff' && user.allowed_forms && !user.allowed_forms.includes(submission.form_id)) {
+          alert('Du har ikke adgang til denne ansøgning');
+          return;
+        }
+        
+        submissions[submissionIndex].status = newStatus;
+        setSubmissions(submissions);
+        
+        onUpdate();
+        if (selectedSubmission && selectedSubmission.id === submissionId) {
+          setSelectedSubmission(prev => ({ ...prev, status: newStatus }));
+        }
       }
     } catch (error) {
       console.error('Failed to update status:', error);
