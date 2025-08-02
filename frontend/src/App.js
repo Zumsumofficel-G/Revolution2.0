@@ -873,9 +873,13 @@ const AdminDashboard = () => {
         <Tabs defaultValue="overview" className="space-y-8">
           <TabsList className="bg-white/10 border-purple-500/20">
             <TabsTrigger value="overview" className="text-white data-[state=active]:bg-purple-600">Oversigt</TabsTrigger>
-            <TabsTrigger value="applications" className="text-white data-[state=active]:bg-purple-600">Ansøgninger</TabsTrigger>
+            {user?.is_admin && (
+              <TabsTrigger value="applications" className="text-white data-[state=active]:bg-purple-600">Ansøgninger</TabsTrigger>
+            )}
             <TabsTrigger value="submissions" className="text-white data-[state=active]:bg-purple-600">Indsendte Ansøgninger</TabsTrigger>
-            <TabsTrigger value="settings" className="text-white data-[state=active]:bg-purple-600">Indstillinger</TabsTrigger>
+            {user?.is_admin && (
+              <TabsTrigger value="settings" className="text-white data-[state=active]:bg-purple-600">Indstillinger</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="overview">
