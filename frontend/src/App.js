@@ -1473,7 +1473,277 @@ const SubmissionManager = ({ submissions, onUpdate }) => {
 
 // Changelog Manager Component
 const ChangelogManager = () => {
-  return <div className="text-white">Changelog Manager - Implementation continues</div>;
+  const [changelogs, setChangelogs] = useState([]);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingChangelog, setEditingChangelog] = useState(null);
+  const [newChangelog, setNewChangelog] = useState({
+    title: '',
+    content: '',
+    version: ''
+  });
+
+  useEffect(() => {
+    fetchChangelogs();
+  }, []);
+
+  const fetchChangelogs = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API}/admin/changelogs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setChangelogs(response.data);
+    } catch (error) {
+      console.error('Failed to fetch changelogs:', error);
+    }
+  };
+
+  const handleCreateChangelog = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.post(`${API}/admin/changelogs`, newChangelog, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsCreateDialogOpen(false);
+      setNewChangelog({ title: '', content: '', version: '' });
+      fetchChangelogs();
+    } catch (error) {
+      console.error('Failed to create changelog:', error);
+      alert('Fejl ved oprettelse af changelog');
+    }
+  };
+
+  const handleEditChangelog = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.put(`${API}/admin/changelogs/${editingChangelog.id}`, {
+        title: editingChangelog.title,
+        content: editingChangelog.content,
+        version: editingChangelog.version
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsEditDialogOpen(false);
+      setEditingChangelog(null);
+      fetchChangelogs();
+    } catch (error) {
+      console.error('Failed to update changelog:', error);
+      alert('Fejl ved opdatering af changelog');
+    }
+  };
+
+  const handleDeleteChangelog = async (changelogId) => {
+    if (!confirm('Er du sikker på, at du vil slette denne changelog?')) return;
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(`${API}/admin/changelogs/${changelogId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchChangelogs();
+    } catch (error) {
+      console.error('Failed to delete changelog:', error);
+      alert('Fejl ved sletning af changelog');
+    }
+  };
+
+  const openEditDialog = (changelog) => {
+    setEditingChangelog({ ...changelog });
+    setIsEditDialogOpen(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Changelog Styring</h2>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-purple-600 hover:bg-purple-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Ny Changelog
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Opret ny changelog</DialogTitle>
+              <DialogDescription className="text-gray-300">
+                Tilføj en ny opdatering til changelog
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-white">Titel</Label>
+                  <Input
+                    value={newChangelog.title}
+                    onChange={(e) => setNewChangelog({...newChangelog, title: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                    placeholder="Opdateringstitel"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-white">Version (valgfri)</Label>
+                  <Input
+                    value={newChangelog.version}
+                    onChange={(e) => setNewChangelog({...newChangelog, version: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                    placeholder="1.0.0"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-white">Indhold</Label>
+                <Textarea
+                  value={newChangelog.content}
+                  onChange={(e) => setNewChangelog({...newChangelog, content: e.target.value})}
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  rows={8}
+                  placeholder="Beskriv ændringerne i denne opdatering..."
+                />
+              </div>
+              
+              <div className="flex space-x-4">
+                <Button 
+                  onClick={() => setIsCreateDialogOpen(false)} 
+                  variant="outline"
+                  className="flex-1 border-gray-500 text-gray-300"
+                >
+                  Annuller
+                </Button>
+                <Button 
+                  onClick={handleCreateChangelog}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  disabled={!newChangelog.title || !newChangelog.content}
+                >
+                  Opret changelog
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid gap-6">
+        {changelogs.map((changelog) => (
+          <Card key={changelog.id} className="bg-white/10 border-purple-500/20 text-white">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <CardTitle className="text-xl">{changelog.title}</CardTitle>
+                    {changelog.version && (
+                      <Badge variant="outline" className="border-purple-500 text-purple-300">
+                        v{changelog.version}
+                      </Badge>
+                    )}
+                  </div>
+                  <CardDescription className="text-gray-400">
+                    {new Date(changelog.created_at).toLocaleDateString('da-DK')} - {changelog.created_by}
+                  </CardDescription>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => openEditDialog(changelog)}
+                    className="border-purple-500 text-purple-300"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => handleDeleteChangelog(changelog.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-200 whitespace-pre-line">{changelog.content}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {changelogs.length === 0 && (
+        <Card className="bg-white/10 border-purple-500/20 text-white">
+          <CardContent className="p-8 text-center">
+            <p className="text-gray-400">Ingen changelogs oprettet endnu</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Rediger changelog</DialogTitle>
+            <DialogDescription className="text-gray-300">
+              Opdater changelog indholdet
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingChangelog && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-white">Titel</Label>
+                  <Input
+                    value={editingChangelog.title}
+                    onChange={(e) => setEditingChangelog({...editingChangelog, title: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-white">Version (valgfri)</Label>
+                  <Input
+                    value={editingChangelog.version || ''}
+                    onChange={(e) => setEditingChangelog({...editingChangelog, version: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                    placeholder="1.0.0"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-white">Indhold</Label>
+                <Textarea
+                  value={editingChangelog.content}
+                  onChange={(e) => setEditingChangelog({...editingChangelog, content: e.target.value})}
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  rows={8}
+                />
+              </div>
+              
+              <div className="flex space-x-4">
+                <Button 
+                  onClick={() => setIsEditDialogOpen(false)} 
+                  variant="outline"
+                  className="flex-1 border-gray-500 text-gray-300"
+                >
+                  Annuller
+                </Button>
+                <Button 
+                  onClick={handleEditChangelog}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  disabled={!editingChangelog.title || !editingChangelog.content}
+                >
+                  Gem ændringer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 };
 
 // User Manager Component
