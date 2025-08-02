@@ -1788,13 +1788,420 @@ const ChangelogManager = () => {
     return role === 'admin' ? 'Administrator' : 'Staff';
   };
 
+// User Manager Component
+const UserManager = ({ applications }) => {
+  const [users, setUsers] = useState([]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [newUser, setNewUser] = useState({ 
+    username: '', 
+    password: '', 
+    role: 'staff', 
+    allowed_forms: [] 
+  });
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API}/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const createUser = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.post(`${API}/admin/create-user`, newUser, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNewUser({ username: '', password: '', role: 'staff', allowed_forms: [] });
+      setIsCreating(false);
+      await fetchUsers();
+      alert(`${newUser.role === 'admin' ? 'Admin' : 'Staff'} bruger oprettet successfully!`);
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      alert('Fejl ved oprettelse af bruger - brugernavn findes muligvis allerede');
+    }
+  };
+
+  const updateUser = async (userId, updateData) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.put(`${API}/admin/users/${userId}`, updateData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchUsers();
+      setEditingUser(null);
+      alert('Bruger opdateret successfully!');
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      alert(error.response?.data?.detail || 'Fejl ved opdatering af bruger');
+    }
+  };
+
+  const deleteUser = async (userId, username) => {
+    if (username === 'admin') {
+      alert('Kan ikke slette standard admin bruger');
+      return;
+    }
+    
+    if (confirm(`Er du sikker på at du vil slette brugeren "${username}"?`)) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        await axios.delete(`${API}/admin/users/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        await fetchUsers();
+        alert('Bruger slettet successfully!');
+      } catch (error) {
+        console.error('Failed to delete user:', error);
+        alert(error.response?.data?.detail || 'Fejl ved sletning af bruger');
+      }
+    }
+  };
+
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.put(`${API}/admin/users/${userId}/role`, { role: newRole }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchUsers();
+      alert('Brugerrolle opdateret successfully!');
+    } catch (error) {
+      console.error('Failed to update user role:', error);
+      alert(error.response?.data?.detail || 'Fejl ved opdatering af rolle');
+    }
+  };
+
+  const handleFormAccess = (formId) => {
+    setNewUser(prev => ({
+      ...prev,
+      allowed_forms: prev.allowed_forms.includes(formId) 
+        ? prev.allowed_forms.filter(id => id !== formId)
+        : [...prev.allowed_forms, formId]
+    }));
+  };
+
+  const getRoleText = (role) => {
+    return role === 'admin' ? 'Administrator' : 'Staff';
+  };
+
   const getRoleBadgeVariant = (role) => {
     return role === 'admin' ? 'default' : 'secondary';
   };
 
+  if (isCreating) {
+    return (
+      <Card className="bg-white/10 border-purple-500/20 text-white">
+        <CardHeader>
+          <CardTitle>Opret Ny Bruger</CardTitle>
+          <CardDescription className="text-gray-300">
+            Opret admin eller staff brugere og tildel ansøgningsadgang
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={createUser} className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label>Brugernavn</Label>
+                <Input
+                  value={newUser.username}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
+                  required
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  placeholder="Indtast brugernavn"
+                />
+              </div>
+              <div>
+                <Label>Rolle</Label>
+                <Select 
+                  value={newUser.role} 
+                  onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}
+                >
+                  <SelectTrigger className="bg-white/5 border-purple-500/30 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="staff">Staff (Begrænset adgang)</SelectItem>
+                    <SelectItem value="admin">Admin (Fuld adgang)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div>
+              <Label>Adgangskode</Label>
+              <Input
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+                required
+                className="bg-white/5 border-purple-500/30 text-white"
+                placeholder="Indtast adgangskode"
+              />
+            </div>
+
+            {newUser.role === 'staff' && (
+              <div>
+                <Label>Ansøgningsadgang (Staff kun)</Label>
+                <div className="mt-3 space-y-3">
+                  {applications.map((app) => (
+                    <div key={app.id} className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg">
+                      <input
+                        type="checkbox"
+                        id={app.id}
+                        checked={newUser.allowed_forms.includes(app.id)}
+                        onChange={() => handleFormAccess(app.id)}
+                        className="rounded"
+                      />
+                      <Label htmlFor={app.id} className="flex-1 cursor-pointer">
+                        <div className="font-medium">{app.title}</div>
+                        <div className="text-sm text-gray-400">{app.position}</div>
+                      </Label>
+                    </div>
+                  ))}
+                  {applications.length === 0 && (
+                    <p className="text-gray-400 text-sm">Ingen ansøgninger tilgængelige</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsCreating(false);
+                  setNewUser({ username: '', password: '', role: 'staff', allowed_forms: [] });
+                }}
+                className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
+              >
+                Annuller
+              </Button>
+              <Button type="submit" className="flex-1 bg-purple-600 hover:bg-purple-700">
+                Opret {newUser.role === 'admin' ? 'Admin' : 'Staff'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Brugerstyring</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Brugerstyring</h2>
+        <Button onClick={() => setIsCreating(true)} className="bg-purple-600 hover:bg-purple-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Ny Bruger
+        </Button>
+      </div>
+
+      <Card className="bg-white/10 border-purple-500/20 text-white">
+        <CardHeader>
+          <CardTitle>Alle Brugere ({users.length})</CardTitle>
+          <CardDescription className="text-gray-300">
+            Administrer alle brugere og deres adgang til ansøgninger
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {users.length > 0 ? users.map((user) => (
+              <Card key={user.id} className="bg-white/5 border-purple-500/30">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="font-semibold text-lg">{user.username}</h3>
+                        <Badge variant={getRoleBadgeVariant(user.role)}>
+                          {getRoleText(user.role)}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-gray-400 space-y-1">
+                        <div>Oprettet: {new Date(user.created_at).toLocaleDateString('da-DK')}</div>
+                        {user.created_by && user.created_by !== 'system' && (
+                          <div>Oprettet af: {user.created_by}</div>
+                        )}
+                        {user.role === 'staff' && (
+                          <div>
+                            Ansøgningsadgang: {user.allowed_forms?.length || 0} ansøgninger
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <UserEditDialog 
+                        user={user} 
+                        applications={applications}
+                        onUpdate={updateUser}
+                        disabled={user.username === 'admin'}
+                      />
+                      <Button
+                        onClick={() => deleteUser(user.id, user.username)}
+                        size="sm"
+                        variant="destructive"
+                        disabled={user.username === 'admin'}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Slet
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )) : (
+              <div className="text-center py-8">
+                <Users className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg">Ingen brugere fundet</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// User Edit Dialog Component
+const UserEditDialog = ({ user, applications, onUpdate, disabled }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    username: user.username,
+    password: '',
+    allowed_forms: user.allowed_forms || []
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const updateData = {};
+    
+    if (formData.username !== user.username) {
+      updateData.username = formData.username;
+    }
+    
+    if (formData.password.trim()) {
+      updateData.password = formData.password;
+    }
+    
+    if (user.role === 'staff') {
+      updateData.allowed_forms = formData.allowed_forms;
+    }
+    
+    if (Object.keys(updateData).length === 0) {
+      setIsOpen(false);
+      return;
+    }
+    
+    await onUpdate(user.id, updateData);
+    setIsOpen(false);
+    setFormData({ username: user.username, password: '', allowed_forms: user.allowed_forms || [] });
+  };
+
+  const handleFormAccess = (formId) => {
+    setFormData(prev => ({
+      ...prev,
+      allowed_forms: prev.allowed_forms.includes(formId) 
+        ? prev.allowed_forms.filter(id => id !== formId)
+        : [...prev.allowed_forms, formId]
+    }));
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-purple-500 text-purple-300 hover:bg-purple-500/20"
+          disabled={disabled}
+        >
+          <Edit className="h-4 w-4" />
+          Rediger
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Rediger Bruger: {user.username}</DialogTitle>
+          <DialogDescription className="text-gray-300">
+            Opdater brugeroplysninger og adgang
+          </DialogDescription>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label>Brugernavn</Label>
+            <Input
+              value={formData.username}
+              onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+              className="bg-white/5 border-purple-500/30 text-white"
+            />
+          </div>
+          
+          <div>
+            <Label>Ny Adgangskode (lad tom for at beholde nuværende)</Label>
+            <Input
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+              className="bg-white/5 border-purple-500/30 text-white"
+              placeholder="Indtast ny adgangskode"
+            />
+          </div>
+
+          {user.role === 'staff' && (
+            <div>
+              <Label>Ansøgningsadgang</Label>
+              <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                {applications.map((app) => (
+                  <div key={app.id} className="flex items-center space-x-3 p-2 bg-white/5 rounded">
+                    <input
+                      type="checkbox"
+                      id={`edit-${app.id}`}
+                      checked={formData.allowed_forms.includes(app.id)}
+                      onChange={() => handleFormAccess(app.id)}
+                      className="rounded"
+                    />
+                    <Label htmlFor={`edit-${app.id}`} className="flex-1 cursor-pointer">
+                      <div className="font-medium text-sm">{app.title}</div>
+                      <div className="text-xs text-gray-400">{app.position}</div>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex space-x-4 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+              className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
+            >
+              Annuller
+            </Button>
+            <Button type="submit" className="flex-1 bg-purple-600 hover:bg-purple-700">
+              Opdater Bruger
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
       <Card className="bg-white/10 border-purple-500/20 text-white">
         <CardHeader>
