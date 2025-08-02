@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 import { Separator } from "./components/ui/separator";
-import { Users, Server, Settings, FileText, Plus, Eye, Trash2, Edit } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "./components/ui/avatar";
+import { Users, Server, Settings, FileText, Plus, Eye, Trash2, Edit, MessageSquare, LogOut } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -30,25 +31,26 @@ const useAuth = () => {
 };
 
 const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('admin_token'));
+  const [token, setToken] = useState(localStorage.getItem('auth_token'));
   const [user, setUser] = useState(null);
 
-  const login = (token) => {
+  const login = (token, userData) => {
     setToken(token);
-    localStorage.setItem('admin_token', token);
+    setUser(userData);
+    localStorage.setItem('auth_token', token);
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('admin_token');
+    localStorage.removeItem('auth_token');
   };
 
   const isAuthenticated = !!token;
 
   useEffect(() => {
     if (token) {
-      axios.get(`${API}/admin/me`, {
+      axios.get(`${API}/user/me`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(response => {
         setUser(response.data);
@@ -69,6 +71,8 @@ const AuthProvider = ({ children }) => {
 const LandingPage = () => {
   const [serverStats, setServerStats] = useState({ players: 0, max_players: 64, hostname: "Revolution Roleplay" });
   const [applications, setApplications] = useState([]);
+  const [discordMessages, setDiscordMessages] = useState([]);
+  const { user } = useAuth();
 
   useEffect(() => {
     // Fetch server stats
@@ -91,8 +95,19 @@ const LandingPage = () => {
       }
     };
 
+    // Fetch Discord messages
+    const fetchDiscordMessages = async () => {
+      try {
+        const response = await axios.get(`${API}/discord/messages`);
+        setDiscordMessages(response.data);
+      } catch (error) {
+        console.error("Failed to fetch Discord messages:", error);
+      }
+    };
+
     fetchServerStats();
     fetchApplications();
+    fetchDiscordMessages();
 
     // Update server stats every 30 seconds
     const interval = setInterval(fetchServerStats, 30000);
@@ -118,11 +133,27 @@ const LandingPage = () => {
                 <Server className="h-5 w-5" />
                 <span className="font-semibold">{serverStats.players}/{serverStats.max_players}</span>
               </div>
-              <Link to="/admin">
-                <Button variant="outline" className="border-purple-500 text-purple-300 hover:bg-purple-500/20">
-                  Admin Panel
-                </Button>
-              </Link>
+              {user ? (
+                user.is_admin ? (
+                  <Link to="/admin">
+                    <Button className="bg-purple-600 hover:bg-purple-700">
+                      Admin Panel
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link to="/dashboard">
+                    <Button variant="outline" className="border-purple-500 text-purple-300 hover:bg-purple-500/20">
+                      Dashboard
+                    </Button>
+                  </Link>
+                )
+              ) : (
+                <Link to="/login">
+                  <Button variant="outline" className="border-purple-500 text-purple-300 hover:bg-purple-500/20">
+                    Log ind med Discord
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -156,7 +187,7 @@ const LandingPage = () => {
       {/* Server Stats */}
       <section className="py-16 bg-black/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-4 gap-8">
             <Card className="bg-white/5 border-purple-500/20 text-white">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -195,6 +226,58 @@ const LandingPage = () => {
                 <p className="text-gray-400 text-sm">Aktive stillings ansøgninger</p>
               </CardContent>
             </Card>
+
+            <Card className="bg-white/5 border-purple-500/20 text-white">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Discord Beskeder</CardTitle>
+                  <MessageSquare className="h-8 w-8 text-indigo-400" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-indigo-400">{discordMessages.length}</div>
+                <p className="text-gray-400 text-sm">Seneste kanal beskeder</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Discord Messages Section */}
+      <section className="py-20 bg-black/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h3 className="text-4xl font-bold text-white mb-4">Seneste Discord Beskeder</h3>
+            <p className="text-gray-300 text-lg">Se hvad der sker i vores community</p>
+          </div>
+          
+          <div className="max-w-4xl mx-auto space-y-4">
+            {discordMessages.slice(0, 10).map((message) => (
+              <Card key={message.id} className="bg-white/5 border-purple-500/20 text-white">
+                <CardContent className="p-4">
+                  <div className="flex items-start space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage 
+                        src={message.author_avatar ? 
+                          `https://cdn.discordapp.com/avatars/${message.id}/${message.author_avatar}.png` : 
+                          undefined
+                        } 
+                      />
+                      <AvatarFallback>{message.author_username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="font-semibold text-purple-300">{message.author_username}</span>
+                        <span className="text-sm text-gray-400">
+                          {new Date(message.timestamp).toLocaleString('da-DK')}
+                        </span>
+                      </div>
+                      <p className="text-gray-200">{message.content || "📎 Vedhæftet fil"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
@@ -251,10 +334,299 @@ const LandingPage = () => {
   );
 };
 
+// Discord Login Page
+const DiscordLogin = () => {
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if we have a code from Discord callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    
+    if (code) {
+      setLoading(true);
+      axios.get(`${API}/auth/discord/callback?code=${code}`)
+        .then(response => {
+          login(response.data.access_token, response.data.user);
+          if (response.data.is_admin) {
+            navigate('/admin');
+          } else {
+            navigate('/dashboard');
+          }
+        })
+        .catch(error => {
+          console.error('Discord login failed:', error);
+          setLoading(false);
+        });
+    }
+  }, [login, navigate]);
+
+  const handleDiscordLogin = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/auth/discord/login`);
+      window.location.href = response.data.login_url;
+    } catch (error) {
+      console.error('Failed to initiate Discord login:', error);
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+        <Card className="w-full max-w-md bg-white/10 border-purple-500/20">
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+            <p className="text-white">Logger ind med Discord...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      <Card className="w-full max-w-md bg-white/10 border-purple-500/20">
+        <CardHeader className="text-center">
+          <img 
+            src="https://customer-assets.emergentagent.com/job_e66817cd-11b4-4986-8bb5-ab2fe06c620d/artifacts/ag8fwiri_Revolution.png" 
+            alt="Revolution RP" 
+            className="h-16 w-16 mx-auto mb-4"
+          />
+          <CardTitle className="text-2xl text-white">Log ind med Discord</CardTitle>
+          <CardDescription className="text-gray-300">Brug din Discord konto for at få adgang</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button 
+            onClick={handleDiscordLogin}
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            {loading ? 'Logger ind...' : 'Login med Discord'}
+          </Button>
+          
+          <div className="mt-4 text-center">
+            <Link to="/admin" className="text-purple-400 hover:text-purple-300 text-sm">
+              Admin login (legacy)
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// User Dashboard
+const UserDashboard = () => {
+  const { user, logout } = useAuth();
+  const [myApplications, setMyApplications] = useState([]);
+
+  useEffect(() => {
+    fetchMyApplications();
+  }, []);
+
+  const fetchMyApplications = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API}/user/applications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMyApplications(response.data);
+    } catch (error) {
+      console.error('Failed to fetch user applications:', error);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved': return 'text-green-400 bg-green-400/20';
+      case 'rejected': return 'text-red-400 bg-red-400/20';
+      default: return 'text-yellow-400 bg-yellow-400/20';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'approved': return 'Godkendt';
+      case 'rejected': return 'Afvist';
+      default: return 'Afventer';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      <header className="bg-black/20 backdrop-blur-md border-b border-purple-500/20">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center space-x-4">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_e66817cd-11b4-4986-8bb5-ab2fe06c620d/artifacts/ag8fwiri_Revolution.png" 
+              alt="Revolution RP" 
+              className="h-10 w-10"
+            />
+            <h1 className="text-xl font-bold text-white">Mit Dashboard</h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            {user && (
+              <div className="flex items-center space-x-3">
+                <Avatar>
+                  <AvatarImage 
+                    src={user.discord_avatar ? 
+                      `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.discord_avatar}.png` : 
+                      undefined
+                    } 
+                  />
+                  <AvatarFallback>{user.discord_username?.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="text-white">{user.discord_username}</span>
+              </div>
+            )}
+            <Button onClick={logout} variant="outline" className="border-red-500 text-red-300 hover:bg-red-500/20">
+              <LogOut className="h-4 w-4 mr-2" />
+              Log ud
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid md:grid-cols-3 gap-8">
+          {/* User Profile */}
+          <Card className="bg-white/10 border-purple-500/20 text-white">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Min Profil
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage 
+                    src={user?.discord_avatar ? 
+                      `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.discord_avatar}.png` : 
+                      undefined
+                    } 
+                  />
+                  <AvatarFallback>{user?.discord_username?.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold">{user?.discord_username}</p>
+                  <p className="text-sm text-gray-400">Discord Bruger</p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div><span className="text-gray-400">Status:</span> {user?.is_admin ? 'Administrator' : 'Bruger'}</div>
+                <div><span className="text-gray-400">Medlem siden:</span> {new Date(user?.created_at).toLocaleDateString('da-DK')}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card className="bg-white/10 border-purple-500/20 text-white">
+            <CardHeader>
+              <CardTitle>Hurtige Handlinger</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Link to="/" className="block">
+                <Button className="w-full bg-purple-600 hover:bg-purple-700 justify-start">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Se Tilgængelige Ansøgninger
+                </Button>
+              </Link>
+              {user?.is_admin && (
+                <Link to="/admin" className="block">
+                  <Button className="w-full bg-indigo-600 hover:bg-indigo-700 justify-start">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Admin Panel
+                  </Button>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Application Stats */}
+          <Card className="bg-white/10 border-purple-500/20 text-white">
+            <CardHeader>
+              <CardTitle>Mine Ansøgninger</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-400 mb-2">{myApplications.length}</div>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-green-400">Godkendt: </span>
+                  {myApplications.filter(app => app.status === 'approved').length}
+                </div>
+                <div>
+                  <span className="text-yellow-400">Afventer: </span>
+                  {myApplications.filter(app => app.status === 'pending').length}
+                </div>
+                <div>
+                  <span className="text-red-400">Afvist: </span>
+                  {myApplications.filter(app => app.status === 'rejected').length}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Applications Table */}
+        <Card className="bg-white/10 border-purple-500/20 text-white mt-8">
+          <CardHeader>
+            <CardTitle>Mine Ansøgninger</CardTitle>
+            <CardDescription className="text-gray-300">
+              Oversigt over alle dine ansøgninger og deres status
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {myApplications.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-purple-500/20">
+                    <TableHead className="text-white">Ansøgning</TableHead>
+                    <TableHead className="text-white">Indsendt</TableHead>
+                    <TableHead className="text-white">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {myApplications.map((application) => (
+                    <TableRow key={application.id} className="border-purple-500/20 text-white">
+                      <TableCell className="font-medium">{application.form_id.slice(0, 8)}...</TableCell>
+                      <TableCell>{new Date(application.submitted_at).toLocaleDateString('da-DK')}</TableCell>
+                      <TableCell>
+                        <Badge className={`${getStatusColor(application.status)} border-0`}>
+                          {getStatusText(application.status)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg mb-4">Du har ingen ansøgninger endnu</p>
+                <Link to="/">
+                  <Button className="bg-purple-600 hover:bg-purple-700">
+                    Gennemse Ansøgninger
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 // Application Form Page
 const ApplicationForm = () => {
   const { id: formId } = useParams();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const [form, setForm] = useState(null);
   const [responses, setResponses] = useState({});
   const [applicantName, setApplicantName] = useState("");
@@ -272,6 +644,11 @@ const ApplicationForm = () => {
           initialResponses[field.id] = field.field_type === 'checkbox' ? [] : '';
         });
         setResponses(initialResponses);
+        
+        // Pre-fill name if user is logged in
+        if (user?.discord_username) {
+          setApplicantName(user.discord_username);
+        }
       } catch (error) {
         console.error("Failed to fetch form:", error);
       } finally {
@@ -280,7 +657,7 @@ const ApplicationForm = () => {
     };
 
     fetchForm();
-  }, [formId]);
+  }, [formId, user]);
 
   const handleFieldChange = (fieldId, value) => {
     setResponses(prev => ({
@@ -296,15 +673,24 @@ const ApplicationForm = () => {
       return;
     }
 
+    if (!isAuthenticated) {
+      alert("Du skal logge ind med Discord for at ansøge");
+      navigate('/login');
+      return;
+    }
+
     setSubmitting(true);
     try {
+      const token = localStorage.getItem('auth_token');
       await axios.post(`${API}/applications/submit`, {
         form_id: formId,
         applicant_name: applicantName,
         responses
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       alert("Ansøgning sendt successfully!");
-      navigate('/');
+      navigate('/dashboard');
     } catch (error) {
       console.error("Failed to submit application:", error);
       alert("Fejl ved indsendelse af ansøgning");
@@ -322,6 +708,7 @@ const ApplicationForm = () => {
             value={responses[field.id] || ''}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             required={field.required}
+            className="bg-white/5 border-purple-500/30 text-white"
           />
         );
       case 'textarea':
@@ -332,12 +719,13 @@ const ApplicationForm = () => {
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
             required={field.required}
             rows={4}
+            className="bg-white/5 border-purple-500/30 text-white"
           />
         );
       case 'select':
         return (
           <Select onValueChange={(value) => handleFieldChange(field.id, value)} required={field.required}>
-            <SelectTrigger>
+            <SelectTrigger className="bg-white/5 border-purple-500/30 text-white">
               <SelectValue placeholder="Vælg en mulighed" />
             </SelectTrigger>
             <SelectContent>
@@ -369,50 +757,61 @@ const ApplicationForm = () => {
             </Badge>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <Label htmlFor="applicant_name" className="text-white">Dit navn *</Label>
-                <Input
-                  id="applicant_name"
-                  value={applicantName}
-                  onChange={(e) => setApplicantName(e.target.value)}
-                  required
-                  className="bg-white/5 border-purple-500/30 text-white"
-                  placeholder="Indtast dit fulde navn"
-                />
+            {!isAuthenticated ? (
+              <div className="text-center py-8">
+                <p className="text-gray-300 mb-4">Du skal logge ind med Discord for at ansøge</p>
+                <Link to="/login">
+                  <Button className="bg-indigo-600 hover:bg-indigo-700">
+                    Log ind med Discord
+                  </Button>
+                </Link>
               </div>
-
-              <Separator className="bg-purple-500/20" />
-
-              {form.fields.map((field) => (
-                <div key={field.id}>
-                  <Label className="text-white">
-                    {field.label} {field.required && <span className="text-red-400">*</span>}
-                  </Label>
-                  <div className="mt-2">
-                    {renderField(field)}
-                  </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <Label htmlFor="applicant_name" className="text-white">Dit navn *</Label>
+                  <Input
+                    id="applicant_name"
+                    value={applicantName}
+                    onChange={(e) => setApplicantName(e.target.value)}
+                    required
+                    className="bg-white/5 border-purple-500/30 text-white"
+                    placeholder="Indtast dit fulde navn"
+                  />
                 </div>
-              ))}
 
-              <div className="flex space-x-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => navigate('/')}
-                  className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
-                >
-                  Annuller
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={submitting}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700"
-                >
-                  {submitting ? 'Sender...' : 'Send Ansøgning'}
-                </Button>
-              </div>
-            </form>
+                <Separator className="bg-purple-500/20" />
+
+                {form.fields.map((field) => (
+                  <div key={field.id}>
+                    <Label className="text-white">
+                      {field.label} {field.required && <span className="text-red-400">*</span>}
+                    </Label>
+                    <div className="mt-2">
+                      {renderField(field)}
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex space-x-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => navigate('/')}
+                    className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
+                  >
+                    Annuller
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={submitting}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  >
+                    {submitting ? 'Sender...' : 'Send Ansøgning'}
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -420,7 +819,7 @@ const ApplicationForm = () => {
   );
 };
 
-// Admin Login
+// Legacy Admin Login (keeping for backwards compatibility)
 const AdminLogin = () => {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -433,7 +832,7 @@ const AdminLogin = () => {
 
     try {
       const response = await axios.post(`${API}/admin/login`, credentials);
-      login(response.data.access_token);
+      login(response.data.access_token, { username: credentials.username, type: 'admin', is_admin: true });
       navigate('/admin/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
@@ -452,8 +851,8 @@ const AdminLogin = () => {
             alt="Revolution RP" 
             className="h-16 w-16 mx-auto mb-4"
           />
-          <CardTitle className="text-2xl text-white">Admin Panel</CardTitle>
-          <CardDescription className="text-gray-300">Log ind for at administrere serveren</CardDescription>
+          <CardTitle className="text-2xl text-white">Legacy Admin Panel</CardTitle>
+          <CardDescription className="text-gray-300">Log ind med admin kredentiealer</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -487,13 +886,19 @@ const AdminLogin = () => {
               {loading ? 'Logger ind...' : 'Log ind'}
             </Button>
           </form>
+          
+          <div className="mt-4 text-center">
+            <Link to="/login" className="text-indigo-400 hover:text-indigo-300 text-sm">
+              ← Tilbage til Discord Login
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 };
 
-// Admin Dashboard
+// Admin Dashboard (existing implementation continues...)
 const AdminDashboard = () => {
   const { logout, user } = useAuth();
   const [applications, setApplications] = useState([]);
@@ -508,8 +913,9 @@ const AdminDashboard = () => {
 
   const fetchApplications = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await axios.get(`${API}/admin/application-forms`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setApplications(response.data);
     } catch (error) {
@@ -519,8 +925,9 @@ const AdminDashboard = () => {
 
   const fetchSubmissions = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await axios.get(`${API}/admin/submissions`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setSubmissions(response.data);
     } catch (error) {
@@ -550,7 +957,9 @@ const AdminDashboard = () => {
             <h1 className="text-xl font-bold text-white">Admin Panel</h1>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-gray-300">Velkommen, {user?.username}</span>
+            <span className="text-gray-300">
+              Velkommen, {user?.discord_username || user?.username}
+            </span>
             <Button onClick={logout} variant="outline" className="border-red-500 text-red-300 hover:bg-red-500/20">
               Log ud
             </Button>
@@ -647,7 +1056,7 @@ const AdminDashboard = () => {
   );
 };
 
-// Application Manager Component
+// Application Manager Component - rest of the existing components remain the same...
 const ApplicationManager = ({ applications, onUpdate }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingApp, setEditingApp] = useState(null);
@@ -701,6 +1110,7 @@ const ApplicationManager = ({ applications, onUpdate }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const token = localStorage.getItem('auth_token');
       const url = editingApp ? 
         `${API}/admin/application-forms/${editingApp.id}` : 
         `${API}/admin/application-forms`;
@@ -710,7 +1120,7 @@ const ApplicationManager = ({ applications, onUpdate }) => {
         method,
         url,
         data: formData,
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       onUpdate();
@@ -726,8 +1136,9 @@ const ApplicationManager = ({ applications, onUpdate }) => {
   const deleteApplication = async (id) => {
     if (confirm('Er du sikker på at du vil slette denne ansøgning?')) {
       try {
+        const token = localStorage.getItem('auth_token');
         await axios.delete(`${API}/admin/application-forms/${id}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+          headers: { Authorization: `Bearer ${token}` }
         });
         onUpdate();
       } catch (error) {
@@ -957,14 +1368,15 @@ const ApplicationManager = ({ applications, onUpdate }) => {
   );
 };
 
-// Submission Manager Component
+// Submission Manager Component - rest remains same as before...
 const SubmissionManager = ({ submissions, onUpdate }) => {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
 
   const updateStatus = async (submissionId, status) => {
     try {
+      const token = localStorage.getItem('auth_token');
       await axios.put(`${API}/admin/submissions/${submissionId}/status`, { status }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       onUpdate();
     } catch (error) {
@@ -1075,7 +1487,7 @@ const SubmissionManager = ({ submissions, onUpdate }) => {
   );
 };
 
-// Admin Settings Component
+// Admin Settings Component 
 const AdminSettings = () => {
   const [newAdmin, setNewAdmin] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -1084,8 +1496,9 @@ const AdminSettings = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      const token = localStorage.getItem('auth_token');
       await axios.post(`${API}/admin/create-admin`, newAdmin, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setNewAdmin({ username: '', password: '' });
       alert('Admin bruger oprettet successfully!');
@@ -1105,7 +1518,7 @@ const AdminSettings = () => {
         <CardHeader>
           <CardTitle>Opret Ny Admin</CardTitle>
           <CardDescription className="text-gray-300">
-            Opret en ny administrator konto
+            Opret en ny administrator konto (legacy system)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1138,13 +1551,17 @@ const AdminSettings = () => {
 
       <Card className="bg-white/10 border-purple-500/20 text-white">
         <CardHeader>
-          <CardTitle>Server Information</CardTitle>
+          <CardTitle>System Information</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
-            <div>Default Admin: admin / admin123</div>
-            <div>FiveM Server API: http://45.84.198.57:30120/dynamic.json</div>
-            <div>Webhook Format: Discord</div>
+            <div><strong>Discord Integration:</strong> Aktiv</div>
+            <div><strong>Default Admin:</strong> admin / admin123</div>
+            <div><strong>FiveM Server API:</strong> http://45.84.198.57:30120/dynamic.json</div>
+            <div><strong>Webhook Format:</strong> Discord</div>
+            <div><strong>Discord Guild ID:</strong> 1400723673756860526</div>
+            <div><strong>Admin Role ID:</strong> 1401247932950511626</div>
+            <div><strong>Channel ID:</strong> 1400723674255986715</div>
           </div>
         </CardContent>
       </Card>
@@ -1153,9 +1570,18 @@ const AdminSettings = () => {
 };
 
 // Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/admin" />;
+const ProtectedRoute = ({ children, requireAdmin = false }) => {
+  const { isAuthenticated, user } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+  
+  if (requireAdmin && !user?.is_admin) {
+    return <Navigate to="/dashboard" />;
+  }
+  
+  return children;
 };
 
 // Main App Component
@@ -1166,10 +1592,16 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<DiscordLogin />} />
             <Route path="/apply/:id" element={<ApplicationForm />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <UserDashboard />
+              </ProtectedRoute>
+            } />
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={
-              <ProtectedRoute>
+              <ProtectedRoute requireAdmin={true}>
                 <AdminDashboard />
               </ProtectedRoute>
             } />
