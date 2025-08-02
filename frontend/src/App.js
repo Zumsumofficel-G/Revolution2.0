@@ -1568,7 +1568,7 @@ function App() {
             <Route path="/apply/:id" element={<ApplicationForm />} />
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={
-              <ProtectedRoute requireAdmin={true}>
+              <ProtectedRoute>
                 <AdminDashboard />
               </ProtectedRoute>
             } />
