@@ -134,19 +134,31 @@ const LandingPage = () => {
                 <span className="font-semibold">{serverStats.players}/{serverStats.max_players}</span>
               </div>
               {user ? (
-                user.is_admin ? (
-                  <Link to="/admin">
-                    <Button className="bg-purple-600 hover:bg-purple-700">
-                      Admin Panel
-                    </Button>
-                  </Link>
-                ) : (
-                  <Link to="/dashboard">
-                    <Button variant="outline" className="border-purple-500 text-purple-300 hover:bg-purple-500/20">
-                      Dashboard
-                    </Button>
-                  </Link>
-                )
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage 
+                      src={user.discord_avatar ? 
+                        `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.discord_avatar}.png` : 
+                        undefined
+                      } 
+                    />
+                    <AvatarFallback>{user.discord_username?.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-white font-medium">{user.discord_username}</span>
+                  {user.is_admin ? (
+                    <Link to="/admin">
+                      <Button className="bg-purple-600 hover:bg-purple-700">
+                        Admin Panel
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link to="/dashboard">
+                      <Button variant="outline" className="border-purple-500 text-purple-300 hover:bg-purple-500/20">
+                        Dashboard
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               ) : (
                 <Link to="/login">
                   <Button variant="outline" className="border-purple-500 text-purple-300 hover:bg-purple-500/20">
