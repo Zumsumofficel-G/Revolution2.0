@@ -986,7 +986,10 @@ const AdminDashboard = () => {
             )}
             <TabsTrigger value="submissions" className="text-white data-[state=active]:bg-purple-600">Indsendte Ansøgninger</TabsTrigger>
             {user?.is_admin && (
-              <TabsTrigger value="settings" className="text-white data-[state=active]:bg-purple-600">Indstillinger</TabsTrigger>
+              <>
+                <TabsTrigger value="changelogs" className="text-white data-[state=active]:bg-purple-600">Changelogs</TabsTrigger>
+                <TabsTrigger value="users" className="text-white data-[state=active]:bg-purple-600">Brugerstyring</TabsTrigger>
+              </>
             )}
           </TabsList>
 
