@@ -1151,7 +1151,6 @@ const AdminSettings = () => {
     </div>
   );
 };
-};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
