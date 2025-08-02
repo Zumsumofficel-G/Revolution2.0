@@ -555,19 +555,19 @@ async def submit_application(submission: ApplicationSubmit):
 
 # Admin application management
 @api_router.get("/admin/submissions", response_model=List[ApplicationSubmission])
-async def get_admin_submissions(current_admin = Depends(require_admin_access)):
+async def get_admin_submissions(current_admin = Depends(require_staff_or_admin_access)):
     submissions = await db.application_submissions.find().sort("submitted_at", -1).to_list(1000)
     return [ApplicationSubmission(**sub) for sub in submissions]
 
 @api_router.get("/admin/submissions/{submission_id}", response_model=ApplicationSubmission)
-async def get_admin_submission(submission_id: str, current_admin = Depends(require_admin_access)):
+async def get_admin_submission(submission_id: str, current_admin = Depends(require_staff_or_admin_access)):
     submission = await db.application_submissions.find_one({"id": submission_id})
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
     return ApplicationSubmission(**submission)
 
 @api_router.put("/admin/submissions/{submission_id}/status")
-async def update_submission_status(submission_id: str, status: dict, current_admin = Depends(require_admin_access)):
+async def update_submission_status(submission_id: str, status: dict, current_admin = Depends(require_staff_or_admin_access)):
     result = await db.application_submissions.update_one(
         {"id": submission_id},
         {"$set": {"status": status.get("status", "pending")}}
