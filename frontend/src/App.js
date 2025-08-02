@@ -26,6 +26,9 @@ import {
   getAuthUser, setAuthUser, removeAuthUser
 } from "./utils/storage";
 
+// API base URL
+const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
 // Initialize storage on app load
 initializeStorage();
 
