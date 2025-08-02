@@ -1070,9 +1070,14 @@ const AdminDashboard = () => {
           </TabsContent>
 
           {user?.is_admin && (
-            <TabsContent value="settings">
-              <AdminSettings />
-            </TabsContent>
+            <>
+              <TabsContent value="changelogs">
+                <ChangelogManager />
+              </TabsContent>
+              <TabsContent value="users">
+                <UserManager applications={applications} />
+              </TabsContent>
+            </>
           )}
         </Tabs>
       </div>
