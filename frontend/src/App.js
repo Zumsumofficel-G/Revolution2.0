@@ -521,19 +521,31 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/admin/login`, credentials);
-      const userData = { 
-        username: credentials.username, 
-        type: 'admin', 
-        role: response.data.role,
-        is_admin: response.data.role === 'admin',
-        is_staff: ['admin', 'staff'].includes(response.data.role)
-      };
-      login(response.data.access_token, userData);
-      navigate('/admin/dashboard');
+      // Check credentials against local data
+      const users = getUsers();
+      const user = users.find(u => 
+        u.username === credentials.username && 
+        u.password_hash === credentials.password
+      );
+      
+      if (user) {
+        const userData = { 
+          username: user.username, 
+          type: 'admin', 
+          role: user.role,
+          id: user.id,
+          allowed_forms: user.allowed_forms || [],
+          is_admin: user.role === 'admin',
+          is_staff: ['admin', 'staff'].includes(user.role)
+        };
+        login(userData);
+        navigate('/admin/dashboard');
+      } else {
+        alert('Forkerte loginoplysninger');
+      }
     } catch (error) {
       console.error('Login failed:', error);
-      alert('Forkerte loginoplysninger');
+      alert('Fejl ved login');
     } finally {
       setLoading(false);
     }
