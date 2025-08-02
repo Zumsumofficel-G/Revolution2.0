@@ -726,6 +726,9 @@ def main():
     tests = [
         # Basic functionality tests
         ("Server Stats", tester.test_server_stats),
+        ("Discord Messages", tester.test_discord_messages),
+        ("Discord News", tester.test_discord_news),
+        ("Public Changelogs", tester.test_public_changelogs),
         ("Get Public Applications", tester.test_get_public_applications),
         
         # Admin authentication and user management
@@ -733,14 +736,25 @@ def main():
         ("Admin User Me", tester.test_admin_user_me),
         ("Create Staff User", tester.test_create_staff_user),
         ("Get Admin Users", tester.test_get_admin_users),
+        ("Update User Role", tester.test_update_user_role),
+        ("Update User Info", tester.test_update_user_info),
+        ("Delete User", tester.test_delete_user),
         
         # Staff authentication
         ("Staff Login", tester.test_staff_login),
         ("Staff User Me", tester.test_staff_user_me),
         
+        # Changelog management
+        ("Admin Create Changelog", tester.test_admin_create_changelog),
+        ("Admin Get Changelogs", tester.test_admin_get_changelogs),
+        ("Staff Cannot Create Changelog", tester.test_staff_cannot_create_changelog),
+        ("Staff Cannot Get Admin Changelogs", tester.test_staff_cannot_get_admin_changelogs),
+        
         # Role-based access control tests
         ("Staff Cannot Get Users", tester.test_staff_cannot_get_users),
         ("Admin Create Application Form", tester.test_admin_create_application_form),
+        ("Get Specific Application Form", tester.test_get_specific_application_form),
+        ("Update Application Form", tester.test_update_application_form),
         ("Staff Cannot Create Form", tester.test_staff_cannot_create_form),
         ("Admin Get Application Forms", tester.test_admin_get_application_forms),
         ("Staff Cannot Get Forms", tester.test_staff_cannot_get_forms),
@@ -748,6 +762,7 @@ def main():
         # Application submission and management
         ("Public Submit Application", tester.test_public_submit_application),
         ("Admin Get Submissions", tester.test_admin_get_submissions),
+        ("Get Specific Submission", tester.test_get_specific_submission),
         ("Staff Get Submissions", tester.test_staff_get_submissions),
         ("Admin Update Submission Status", tester.test_admin_update_submission_status),
         ("Staff Update Submission Status", tester.test_staff_update_submission_status),
