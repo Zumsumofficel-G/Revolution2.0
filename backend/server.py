@@ -183,13 +183,22 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     return await get_current_admin(credentials)
 
 async def require_admin_access(current_user = Depends(get_current_user)):
-    """Require admin access - either admin user or Discord user with admin role"""
-    if current_user["type"] == "admin":
+    """Require full admin access - only admin role users"""
+    if current_user["type"] == "admin" and current_user["user"].role == "admin":
         return current_user["user"]
     elif current_user["type"] == "discord" and current_user["user"].is_admin:
         return current_user["user"]
     else:
         raise HTTPException(status_code=403, detail="Admin access required")
+
+async def require_staff_or_admin_access(current_user = Depends(get_current_user)):
+    """Require staff or admin access - for managing submissions"""
+    if current_user["type"] == "admin" and current_user["user"].role in ["admin", "staff"]:
+        return current_user["user"]
+    elif current_user["type"] == "discord" and current_user["user"].is_admin:
+        return current_user["user"]
+    else:
+        raise HTTPException(status_code=403, detail="Staff or admin access required")
 
 # Discord API helper functions
 async def get_discord_user_info(access_token: str):
