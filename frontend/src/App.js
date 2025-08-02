@@ -1402,25 +1402,47 @@ const SubmissionManager = ({ submissions, onUpdate }) => {
 
 // Admin Settings Component 
 const AdminSettings = () => {
-  const [newAdmin, setNewAdmin] = useState({ username: '', password: '' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'staff' });
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const createAdmin = async (e) => {
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API}/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const createUser = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      await axios.post(`${API}/admin/create-admin`, newAdmin, {
+      await axios.post(`${API}/admin/create-user`, newUser, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setNewAdmin({ username: '', password: '' });
-      alert('Admin bruger oprettet successfully!');
+      setNewUser({ username: '', password: '', role: 'staff' });
+      await fetchUsers();
+      alert(`${newUser.role === 'admin' ? 'Admin' : 'Staff'} bruger oprettet successfully!`);
     } catch (error) {
-      console.error('Failed to create admin:', error);
-      alert('Fejl ved oprettelse af admin bruger');
+      console.error('Failed to create user:', error);
+      alert('Fejl ved oprettelse af bruger');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getRoleText = (role) => {
+    return role === 'admin' ? 'Administrator' : 'Staff';
   };
 
   return (
@@ -1429,18 +1451,18 @@ const AdminSettings = () => {
 
       <Card className="bg-white/10 border-purple-500/20 text-white">
         <CardHeader>
-          <CardTitle>Opret Ny Admin</CardTitle>
+          <CardTitle>Opret Ny Bruger</CardTitle>
           <CardDescription className="text-gray-300">
-            Opret en ny administrator konto (legacy system)
+            Opret admin eller staff brugere til at administrere ansøgninger
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={createAdmin} className="space-y-4">
+          <form onSubmit={createUser} className="space-y-4">
             <div>
               <Label>Brugernavn</Label>
               <Input
-                value={newAdmin.username}
-                onChange={(e) => setNewAdmin(prev => ({ ...prev, username: e.target.value }))}
+                value={newUser.username}
+                onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
                 required
                 className="bg-white/5 border-purple-500/30 text-white"
               />
@@ -1449,16 +1471,55 @@ const AdminSettings = () => {
               <Label>Adgangskode</Label>
               <Input
                 type="password"
-                value={newAdmin.password}
-                onChange={(e) => setNewAdmin(prev => ({ ...prev, password: e.target.value }))}
+                value={newUser.password}
+                onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
                 required
                 className="bg-white/5 border-purple-500/30 text-white"
               />
             </div>
+            <div>
+              <Label>Rolle</Label>
+              <Select 
+                value={newUser.role} 
+                onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}
+              >
+                <SelectTrigger className="bg-white/5 border-purple-500/30 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="staff">Staff (Kan administrere ansøgninger)</SelectItem>
+                  <SelectItem value="admin">Admin (Fuld adgang)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button type="submit" disabled={loading} className="bg-purple-600 hover:bg-purple-700">
-              {loading ? 'Opretter...' : 'Opret Admin'}
+              {loading ? 'Opretter...' : `Opret ${newUser.role === 'admin' ? 'Admin' : 'Staff'}`}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white/10 border-purple-500/20 text-white">
+        <CardHeader>
+          <CardTitle>Brugere</CardTitle>
+          <CardDescription className="text-gray-300">
+            Oversigt over alle brugere i systemet
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {users.map((user) => (
+              <div key={user.id} className="flex justify-between items-center p-4 bg-white/5 rounded-lg">
+                <div>
+                  <p className="font-semibold">{user.username}</p>
+                  <p className="text-sm text-gray-400">{getRoleText(user.role)}</p>
+                </div>
+                <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                  {user.role}
+                </Badge>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -1468,13 +1529,11 @@ const AdminSettings = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
-            <div><strong>Discord Integration:</strong> Aktiv</div>
+            <div><strong>Staff Access:</strong> Kan se og administrere ansøgninger</div>
+            <div><strong>Admin Access:</strong> Fuld adgang til alle funktioner</div>
             <div><strong>Default Admin:</strong> admin / admin123</div>
             <div><strong>FiveM Server API:</strong> http://45.84.198.57:30120/dynamic.json</div>
             <div><strong>Webhook Format:</strong> Discord</div>
-            <div><strong>Discord Guild ID:</strong> 1400723673756860526</div>
-            <div><strong>Admin Role ID:</strong> 1401247932950511626</div>
-            <div><strong>Channel ID:</strong> 1400723674255986715</div>
           </div>
         </CardContent>
       </Card>
