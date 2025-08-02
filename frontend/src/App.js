@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
 import { Input } from "./components/ui/input";
@@ -14,27 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Separator } from "./components/ui/separator";
 import { Users, Server, Settings, FileText, Plus, Eye, Trash2, Edit, LogOut } from "lucide-react";
 
-// Import local data and utilities
-import { 
-  initializeStorage, 
-  getUsers, setUsers, 
-  getApplications, setApplications,
-  getSubmissions, setSubmissions,
-  getChangelogs, setChangelogs,
-  getAuthToken, setAuthToken, removeAuthToken,
-  getAuthUser, setAuthUser, removeAuthUser
-} from "./utils/storage";
-
-// Initialize storage on app load
-initializeStorage();
-
-// Mock JWT token creation (client-side only)
-const createMockToken = (userData) => {
-  return btoa(JSON.stringify({
-    user: userData,
-    exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
-  }));
-};
+// API Configuration
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 // Auth Context
 const AuthContext = React.createContext();
@@ -48,25 +30,34 @@ const useAuth = () => {
 };
 
 const AuthProvider = ({ children }) => {
-  const [token, setTokenState] = useState(getAuthToken());
-  const [user, setUserState] = useState(getAuthUser());
+  const [token, setToken] = useState(localStorage.getItem('auth_token'));
+  const [user, setUser] = useState(null);
 
-  const login = (userData) => {
-    const mockToken = createMockToken(userData);
-    setTokenState(mockToken);
-    setUserState(userData);
-    setAuthToken(mockToken);
-    setAuthUser(userData);
+  const login = (token, userData) => {
+    setToken(token);
+    setUser(userData);
+    localStorage.setItem('auth_token', token);
   };
 
   const logout = () => {
-    setTokenState(null);
-    setUserState(null);
-    removeAuthToken();
-    removeAuthUser();
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('auth_token');
   };
 
-  const isAuthenticated = !!token && !!user;
+  const isAuthenticated = !!token;
+
+  useEffect(() => {
+    if (token) {
+      axios.get(`${API_BASE_URL}/user/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(response => {
+        setUser(response.data);
+      }).catch(() => {
+        logout();
+      });
+    }
+  }, [token]);
 
   return (
     <AuthContext.Provider value={{ token, user, login, logout, isAuthenticated }}>
