@@ -1546,11 +1546,12 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { isAuthenticated, user } = useAuth();
   
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/admin" />;
   }
   
   if (requireAdmin && !user?.is_admin) {
-    return <Navigate to="/dashboard" />;
+    // If admin required but user is only staff, redirect to admin dashboard with limited access
+    return <Navigate to="/admin/dashboard" />;
   }
   
   return children;
