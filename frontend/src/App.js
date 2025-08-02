@@ -171,7 +171,7 @@ const LandingPage = () => {
       {/* Server Stats */}
       <section className="py-16 bg-black/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-3 gap-8">
             <Card className="bg-white/5 border-purple-500/20 text-white">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -210,58 +210,6 @@ const LandingPage = () => {
                 <p className="text-gray-400 text-sm">Aktive stillings ansøgninger</p>
               </CardContent>
             </Card>
-
-            <Card className="bg-white/5 border-purple-500/20 text-white">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Discord Beskeder</CardTitle>
-                  <MessageSquare className="h-8 w-8 text-indigo-400" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-indigo-400">{discordMessages.length}</div>
-                <p className="text-gray-400 text-sm">Seneste kanal beskeder</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Discord Messages Section */}
-      <section className="py-20 bg-black/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h3 className="text-4xl font-bold text-white mb-4">Seneste Discord Beskeder</h3>
-            <p className="text-gray-300 text-lg">Se hvad der sker i vores community</p>
-          </div>
-          
-          <div className="max-w-4xl mx-auto space-y-4">
-            {discordMessages.slice(0, 10).map((message) => (
-              <Card key={message.id} className="bg-white/5 border-purple-500/20 text-white">
-                <CardContent className="p-4">
-                  <div className="flex items-start space-x-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage 
-                        src={message.author_avatar ? 
-                          `https://cdn.discordapp.com/avatars/${message.id}/${message.author_avatar}.png` : 
-                          undefined
-                        } 
-                      />
-                      <AvatarFallback>{message.author_username.slice(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span className="font-semibold text-purple-300">{message.author_username}</span>
-                        <span className="text-sm text-gray-400">
-                          {new Date(message.timestamp).toLocaleString('da-DK')}
-                        </span>
-                      </div>
-                      <p className="text-gray-200">{message.content || "📎 Vedhæftet fil"}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </div>
       </section>
