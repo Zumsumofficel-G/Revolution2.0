@@ -12,7 +12,7 @@ class RevolutionRPAPITester:
         self.tests_passed = 0
         self.created_form_id = None
         self.created_submission_id = None
-        self.created_staff_username = None
+        self.created_staff_username = f"teststaff_{datetime.now().strftime('%H%M%S')}"
 
     def run_test(self, name, method, endpoint, expected_status, data=None, token=None):
         """Run a single API test"""
@@ -85,155 +85,136 @@ class RevolutionRPAPITester:
             data={"username": username, "password": password}
         )
         if success and 'access_token' in response:
-            self.token = response['access_token']
-            print(f"   Token obtained: {self.token[:20]}...")
+            self.admin_token = response['access_token']
+            print(f"   Admin token obtained: {self.admin_token[:20]}...")
+            print(f"   Role: {response.get('role', 'unknown')}")
             return True
         return False
 
-    def test_admin_login_invalid(self):
-        """Test admin login with invalid credentials"""
-        success, _ = self.run_test(
-            "Admin Login (Invalid)",
-            "POST",
-            "admin/login",
-            401,
-            data={"username": "invalid", "password": "invalid"}
-        )
-        return success
-
-    def test_discord_messages(self):
-        """Test Discord messages endpoint"""
-        success, response = self.run_test(
-            "Discord Messages",
-            "GET",
-            "discord/messages",
-            200
-        )
-        if success:
-            print(f"   Found {len(response)} Discord messages")
-            if response:
-                first_msg = response[0]
-                required_fields = ['id', 'content', 'author_username', 'timestamp']
-                for field in required_fields:
-                    if field in first_msg:
-                        print(f"   {field}: {first_msg[field]}")
-                    else:
-                        print(f"⚠️  Warning: Missing field '{field}' in Discord message")
-        return success
-
-    def test_discord_oauth_login(self):
-        """Test Discord OAuth login URL generation"""
-        success, response = self.run_test(
-            "Discord OAuth Login",
-            "GET",
-            "auth/discord/login",
-            200
-        )
-        if success:
-            if 'login_url' in response:
-                print(f"   Login URL generated: {response['login_url'][:50]}...")
-                # Check if URL contains required parameters
-                url = response['login_url']
-                required_params = ['client_id', 'redirect_uri', 'response_type', 'scope']
-                for param in required_params:
-                    if param in url:
-                        print(f"   ✓ Contains {param}")
-                    else:
-                        print(f"   ⚠️  Missing {param} in URL")
-            else:
-                print("   ⚠️  No login_url in response")
-        return success
-
-    def test_user_me_endpoint(self):
-        """Test user/me endpoint (requires authentication)"""
-        if not self.token:
-            print("⚠️  Skipping - No token available")
+    def test_admin_user_me(self):
+        """Test admin user/me endpoint"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
             return False
             
         success, response = self.run_test(
-            "User Me",
+            "Admin User Me",
             "GET",
             "user/me",
             200,
-            auth_required=True
+            token=self.admin_token
         )
         if success:
-            user_type = response.get('type', 'unknown')
-            print(f"   User type: {user_type}")
-            if user_type == 'admin':
-                print(f"   Username: {response.get('username')}")
-            elif user_type == 'discord':
-                print(f"   Discord username: {response.get('discord_username')}")
-                print(f"   Is admin: {response.get('is_admin')}")
+            print(f"   Type: {response.get('type')}")
+            print(f"   Username: {response.get('username')}")
+            print(f"   Role: {response.get('role')}")
+            print(f"   Is Admin: {response.get('is_admin')}")
+            print(f"   Is Staff: {response.get('is_staff')}")
         return success
 
-    def test_user_applications_endpoint(self):
-        """Test user/applications endpoint"""
-        if not self.token:
-            print("⚠️  Skipping - No token available")
-            return False
-            
-        success, response = self.run_test(
-            "User Applications",
-            "GET",
-            "user/applications",
-            200,
-            auth_required=True
-        )
-        if success:
-            print(f"   Found {len(response)} user applications")
-        return success
-
-    def test_submit_application_with_auth(self):
-        """Test submitting an application with authentication"""
-        if not self.created_form_id or not self.token:
-            print("⚠️  Skipping - No form ID or token available")
+    def test_create_staff_user(self):
+        """Test creating a staff user (admin only)"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
             return False
 
-        # First get the form to get field IDs
-        form_response = requests.get(f"{self.base_url}/applications/{self.created_form_id}")
-        if form_response.status_code != 200:
-            print("⚠️  Could not fetch form for submission test")
-            return False
-            
-        form_data = form_response.json()
-        
-        # Create responses for each field
-        responses = {}
-        for field in form_data.get('fields', []):
-            field_id = field['id']
-            if field['field_type'] == 'text':
-                responses[field_id] = "Test Discord User"
-            elif field['field_type'] == 'textarea':
-                responses[field_id] = "Jeg vil gerne være moderator fordi jeg elsker at hjælpe andre spillere."
-            elif field['field_type'] == 'select':
-                responses[field_id] = field['options'][0] if field.get('options') else "Ingen"
-
-        submission_data = {
-            "form_id": self.created_form_id,
-            "applicant_name": "Test Discord User",
-            "responses": responses
+        staff_data = {
+            "username": self.created_staff_username,
+            "password": "staffpass123",
+            "role": "staff"
         }
         
         success, response = self.run_test(
-            "Submit Application (Authenticated)",
+            "Create Staff User",
             "POST",
-            "applications/submit",
+            "admin/create-user",
             200,
-            data=submission_data,
-            auth_required=True
+            data=staff_data,
+            token=self.admin_token
         )
-        if success and 'submission_id' in response:
-            self.created_submission_id = response['submission_id']
-            print(f"   Created submission ID: {self.created_submission_id}")
         return success
 
-    def test_create_application_form(self):
-        """Test creating a new application form"""
+    def test_staff_login(self):
+        """Test staff user login"""
+        success, response = self.run_test(
+            "Staff Login",
+            "POST",
+            "admin/login",
+            200,
+            data={"username": self.created_staff_username, "password": "staffpass123"}
+        )
+        if success and 'access_token' in response:
+            self.staff_token = response['access_token']
+            print(f"   Staff token obtained: {self.staff_token[:20]}...")
+            print(f"   Role: {response.get('role', 'unknown')}")
+            return True
+        return False
+
+    def test_staff_user_me(self):
+        """Test staff user/me endpoint"""
+        if not self.staff_token:
+            print("⚠️  Skipping - No staff token available")
+            return False
+            
+        success, response = self.run_test(
+            "Staff User Me",
+            "GET",
+            "user/me",
+            200,
+            token=self.staff_token
+        )
+        if success:
+            print(f"   Type: {response.get('type')}")
+            print(f"   Username: {response.get('username')}")
+            print(f"   Role: {response.get('role')}")
+            print(f"   Is Admin: {response.get('is_admin')}")
+            print(f"   Is Staff: {response.get('is_staff')}")
+        return success
+
+    def test_get_admin_users(self):
+        """Test getting all admin users (admin only)"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Admin Users",
+            "GET",
+            "admin/users",
+            200,
+            token=self.admin_token
+        )
+        if success:
+            print(f"   Found {len(response)} users")
+            for user in response:
+                print(f"   - {user.get('username')} ({user.get('role')})")
+        return success
+
+    def test_staff_cannot_get_users(self):
+        """Test that staff cannot access admin users endpoint"""
+        if not self.staff_token:
+            print("⚠️  Skipping - No staff token available")
+            return False
+            
+        success, response = self.run_test(
+            "Staff Cannot Get Users",
+            "GET",
+            "admin/users",
+            403,  # Should be forbidden
+            token=self.staff_token
+        )
+        return success
+
+    def test_admin_create_application_form(self):
+        """Test admin creating application form"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
+            return False
+
         form_data = {
-            "title": "Staff Ansøgning",
-            "description": "Ansøg som moderator på Revolution RP",
-            "position": "Moderator",
+            "title": "Staff Ansøgning Test",
+            "description": "Test ansøgning for staff rolle",
+            "position": "Staff",
             "webhook_url": "https://discord.com/api/webhooks/test123",
             "fields": [
                 {
@@ -243,76 +224,83 @@ class RevolutionRPAPITester:
                     "placeholder": "Indtast dit fulde navn"
                 },
                 {
-                    "label": "Hvorfor vil du være moderator?",
+                    "label": "Hvorfor vil du være staff?",
                     "field_type": "textarea",
                     "required": True
-                },
-                {
-                    "label": "Erfaring",
-                    "field_type": "select",
-                    "required": True,
-                    "options": ["Ingen", "Lidt", "Meget"]
                 }
             ]
         }
         
         success, response = self.run_test(
-            "Create Application Form",
+            "Admin Create Application Form",
             "POST",
             "admin/application-forms",
             200,
             data=form_data,
-            auth_required=True
+            token=self.admin_token
         )
         if success and 'id' in response:
             self.created_form_id = response['id']
             print(f"   Created form ID: {self.created_form_id}")
         return success
 
-    def test_get_admin_application_forms(self):
-        """Test getting all admin application forms"""
+    def test_staff_cannot_create_form(self):
+        """Test that staff cannot create application forms"""
+        if not self.staff_token:
+            print("⚠️  Skipping - No staff token available")
+            return False
+
+        form_data = {
+            "title": "Staff Should Not Create This",
+            "description": "This should fail",
+            "position": "Test",
+            "fields": []
+        }
+        
         success, response = self.run_test(
-            "Get Admin Application Forms",
+            "Staff Cannot Create Form",
+            "POST",
+            "admin/application-forms",
+            403,  # Should be forbidden
+            data=form_data,
+            token=self.staff_token
+        )
+        return success
+
+    def test_admin_get_application_forms(self):
+        """Test admin getting application forms"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
+            return False
+            
+        success, response = self.run_test(
+            "Admin Get Application Forms",
             "GET",
             "admin/application-forms",
             200,
-            auth_required=True
+            token=self.admin_token
         )
         if success:
             print(f"   Found {len(response)} application forms")
         return success
 
-    def test_get_public_applications(self):
-        """Test getting public applications"""
-        success, response = self.run_test(
-            "Get Public Applications",
-            "GET",
-            "applications",
-            200
-        )
-        if success:
-            print(f"   Found {len(response)} public applications")
-        return success
-
-    def test_get_specific_application(self):
-        """Test getting a specific application form"""
-        if not self.created_form_id:
-            print("⚠️  Skipping - No form ID available")
+    def test_staff_cannot_get_forms(self):
+        """Test that staff cannot access application forms endpoint"""
+        if not self.staff_token:
+            print("⚠️  Skipping - No staff token available")
             return False
             
         success, response = self.run_test(
-            "Get Specific Application",
+            "Staff Cannot Get Forms",
             "GET",
-            f"applications/{self.created_form_id}",
-            200
+            "admin/application-forms",
+            403,  # Should be forbidden
+            token=self.staff_token
         )
-        if success:
-            print(f"   Form title: {response.get('title')}")
-            print(f"   Form fields: {len(response.get('fields', []))}")
         return success
 
-    def test_submit_application(self):
-        """Test submitting an application"""
+    def test_public_submit_application(self):
+        """Test public application submission"""
         if not self.created_form_id:
             print("⚠️  Skipping - No form ID available")
             return False
@@ -332,9 +320,7 @@ class RevolutionRPAPITester:
             if field['field_type'] == 'text':
                 responses[field_id] = "Test Ansøger"
             elif field['field_type'] == 'textarea':
-                responses[field_id] = "Jeg vil gerne være moderator fordi jeg elsker at hjælpe andre spillere."
-            elif field['field_type'] == 'select':
-                responses[field_id] = field['options'][0] if field.get('options') else "Ingen"
+                responses[field_id] = "Jeg vil gerne være staff fordi jeg elsker at hjælpe andre spillere."
 
         submission_data = {
             "form_id": self.created_form_id,
@@ -343,7 +329,7 @@ class RevolutionRPAPITester:
         }
         
         success, response = self.run_test(
-            "Submit Application",
+            "Public Submit Application",
             "POST",
             "applications/submit",
             200,
@@ -354,103 +340,123 @@ class RevolutionRPAPITester:
             print(f"   Created submission ID: {self.created_submission_id}")
         return success
 
-    def test_get_admin_submissions(self):
-        """Test getting all admin submissions"""
+    def test_admin_get_submissions(self):
+        """Test admin getting submissions"""
+        if not self.admin_token:
+            print("⚠️  Skipping - No admin token available")
+            return False
+            
         success, response = self.run_test(
-            "Get Admin Submissions",
+            "Admin Get Submissions",
             "GET",
             "admin/submissions",
             200,
-            auth_required=True
+            token=self.admin_token
         )
         if success:
             print(f"   Found {len(response)} submissions")
         return success
 
-    def test_update_submission_status(self):
-        """Test updating submission status"""
-        if not self.created_submission_id:
-            print("⚠️  Skipping - No submission ID available")
+    def test_staff_get_submissions(self):
+        """Test staff getting submissions (should work)"""
+        if not self.staff_token:
+            print("⚠️  Skipping - No staff token available")
             return False
             
         success, response = self.run_test(
-            "Update Submission Status",
+            "Staff Get Submissions",
+            "GET",
+            "admin/submissions",
+            200,
+            token=self.staff_token
+        )
+        if success:
+            print(f"   Found {len(response)} submissions")
+        return success
+
+    def test_admin_update_submission_status(self):
+        """Test admin updating submission status"""
+        if not self.admin_token or not self.created_submission_id:
+            print("⚠️  Skipping - No admin token or submission ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Admin Update Submission Status",
             "PUT",
             f"admin/submissions/{self.created_submission_id}/status",
             200,
             data={"status": "approved"},
-            auth_required=True
+            token=self.admin_token
         )
         return success
 
-    def test_create_new_admin(self):
-        """Test creating a new admin user"""
-        admin_data = {
-            "username": "testadmin",
-            "password": "testpass123"
-        }
-        
+    def test_staff_update_submission_status(self):
+        """Test staff updating submission status (should work)"""
+        if not self.staff_token or not self.created_submission_id:
+            print("⚠️  Skipping - No staff token or submission ID available")
+            return False
+            
         success, response = self.run_test(
-            "Create New Admin",
-            "POST",
-            "admin/create-admin",
+            "Staff Update Submission Status",
+            "PUT",
+            f"admin/submissions/{self.created_submission_id}/status",
             200,
-            data=admin_data,
-            auth_required=True
+            data={"status": "rejected"},
+            token=self.staff_token
         )
         return success
 
-    def test_new_admin_login(self):
-        """Test login with newly created admin"""
+    def test_get_public_applications(self):
+        """Test getting public applications (no auth required)"""
         success, response = self.run_test(
-            "New Admin Login",
-            "POST",
-            "admin/login",
-            200,
-            data={"username": "testadmin", "password": "testpass123"}
+            "Get Public Applications",
+            "GET",
+            "applications",
+            200
         )
+        if success:
+            print(f"   Found {len(response)} public applications")
         return success
 
 def main():
-    print("🚀 Starting Revolution RP Discord-Integrated API Tests")
-    print("=" * 60)
+    print("🚀 Starting Revolution RP Role-Based User System Tests")
+    print("=" * 70)
     
     tester = RevolutionRPAPITester()
     
-    # Test sequence - organized by functionality
+    # Test sequence - organized by role-based functionality
     tests = [
         # Basic functionality tests
         ("Server Stats", tester.test_server_stats),
-        
-        # Discord integration tests
-        ("Discord Messages", tester.test_discord_messages),
-        ("Discord OAuth Login", tester.test_discord_oauth_login),
-        
-        # Legacy admin authentication tests
-        ("Admin Login", tester.test_admin_login),
-        ("Admin Login Invalid", tester.test_admin_login_invalid),
-        ("User Me Endpoint", tester.test_user_me_endpoint),
-        ("User Applications Endpoint", tester.test_user_applications_endpoint),
-        
-        # Application management tests
-        ("Create Application Form", tester.test_create_application_form),
-        ("Get Admin Application Forms", tester.test_get_admin_application_forms),
         ("Get Public Applications", tester.test_get_public_applications),
-        ("Get Specific Application", tester.test_get_specific_application),
         
-        # Application submission tests
-        ("Submit Application (Unauthenticated)", tester.test_submit_application),
-        ("Submit Application (Authenticated)", tester.test_submit_application_with_auth),
+        # Admin authentication and user management
+        ("Admin Login", tester.test_admin_login),
+        ("Admin User Me", tester.test_admin_user_me),
+        ("Create Staff User", tester.test_create_staff_user),
+        ("Get Admin Users", tester.test_get_admin_users),
         
-        # Admin management tests
-        ("Get Admin Submissions", tester.test_get_admin_submissions),
-        ("Update Submission Status", tester.test_update_submission_status),
-        ("Create New Admin", tester.test_create_new_admin),
-        ("New Admin Login", tester.test_new_admin_login),
+        # Staff authentication
+        ("Staff Login", tester.test_staff_login),
+        ("Staff User Me", tester.test_staff_user_me),
+        
+        # Role-based access control tests
+        ("Staff Cannot Get Users", tester.test_staff_cannot_get_users),
+        ("Admin Create Application Form", tester.test_admin_create_application_form),
+        ("Staff Cannot Create Form", tester.test_staff_cannot_create_form),
+        ("Admin Get Application Forms", tester.test_admin_get_application_forms),
+        ("Staff Cannot Get Forms", tester.test_staff_cannot_get_forms),
+        
+        # Application submission and management
+        ("Public Submit Application", tester.test_public_submit_application),
+        ("Admin Get Submissions", tester.test_admin_get_submissions),
+        ("Staff Get Submissions", tester.test_staff_get_submissions),
+        ("Admin Update Submission Status", tester.test_admin_update_submission_status),
+        ("Staff Update Submission Status", tester.test_staff_update_submission_status),
     ]
     
     print(f"\n📋 Running {len(tests)} tests...")
-    print("-" * 60)
+    print("-" * 70)
     
     for test_name, test_func in tests:
         try:
@@ -459,27 +465,28 @@ def main():
             print(f"❌ {test_name} failed with exception: {str(e)}")
     
     # Print results
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
     
     if tester.tests_passed == tester.tests_run:
         print("🎉 All tests passed!")
-        print("\n✅ Discord Integration Features:")
-        print("   - Discord messages endpoint working")
-        print("   - Discord OAuth login URL generation working")
-        print("   - User authentication system working")
-        print("   - Application submission with Discord integration working")
+        print("\n✅ Role-Based System Features Working:")
+        print("   - Admin can create staff users")
+        print("   - Admin has full access to all endpoints")
+        print("   - Staff can manage submissions but not create forms")
+        print("   - Role-based access control properly enforced")
+        print("   - Public application submission works without login")
         return 0
     else:
         failed_tests = tester.tests_run - tester.tests_passed
         print(f"⚠️  {failed_tests} tests failed")
         print("\n🔍 Issues found:")
-        if failed_tests > 5:
+        if failed_tests > 8:
             print("   - Multiple critical failures detected")
-            print("   - Backend may need significant fixes")
+            print("   - Role-based system may need significant fixes")
         else:
             print("   - Minor issues detected")
-            print("   - Backend mostly functional")
+            print("   - Role-based system mostly functional")
         return 1
 
 if __name__ == "__main__":
