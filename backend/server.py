@@ -471,11 +471,45 @@ async def get_admin_users(current_admin = Depends(require_admin_access)):
             "id": user["id"], 
             "username": user["username"], 
             "role": user.get("role", "admin"), 
+            "allowed_forms": user.get("allowed_forms", []),
             "created_at": user["created_at"],
             "created_by": user.get("created_by", "system")
         } 
         for user in users
     ]
+
+@api_router.put("/admin/users/{user_id}")
+async def update_admin_user(user_id: str, user_data: UserUpdate, current_admin = Depends(require_admin_access)):
+    # Don't allow updating yourself via this endpoint
+    if user_id == current_admin.id:
+        raise HTTPException(status_code=400, detail="Cannot update your own account this way")
+    
+    update_data = {}
+    
+    if user_data.username is not None:
+        # Check if username already exists
+        existing = await db.admin_users.find_one({"username": user_data.username, "id": {"$ne": user_id}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already exists")
+        update_data["username"] = user_data.username
+    
+    if user_data.password is not None:
+        update_data["password_hash"] = hash_password(user_data.password)
+    
+    if user_data.allowed_forms is not None:
+        update_data["allowed_forms"] = user_data.allowed_forms
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    
+    result = await db.admin_users.update_one(
+        {"id": user_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "User updated successfully"}
 
 @api_router.delete("/admin/users/{user_id}")
 async def delete_admin_user(user_id: str, current_admin = Depends(require_admin_access)):
@@ -512,6 +546,50 @@ async def update_user_role(user_id: str, role_data: dict, current_admin = Depend
         raise HTTPException(status_code=404, detail="User not found")
     
     return {"message": "User role updated successfully"}
+
+# Discord News endpoints
+@api_router.get("/discord/news", response_model=List[DiscordNews])
+async def get_discord_news():
+    """Get news/updates from Discord channel"""
+    return await get_discord_channel_messages()
+
+# Changelog endpoints
+@api_router.post("/admin/changelogs", response_model=Changelog)
+async def create_changelog(changelog_data: ChangelogCreate, current_admin = Depends(require_admin_access)):
+    changelog = Changelog(
+        **changelog_data.dict(),
+        created_by=current_admin.username
+    )
+    await db.changelogs.insert_one(changelog.dict())
+    return changelog
+
+@api_router.get("/admin/changelogs", response_model=List[Changelog])
+async def get_admin_changelogs(current_admin = Depends(require_admin_access)):
+    changelogs = await db.changelogs.find().sort("created_at", -1).to_list(1000)
+    return [Changelog(**changelog) for changelog in changelogs]
+
+@api_router.get("/changelogs", response_model=List[Changelog])
+async def get_public_changelogs():
+    """Get public changelogs"""
+    changelogs = await db.changelogs.find().sort("created_at", -1).limit(10).to_list(10)
+    return [Changelog(**changelog) for changelog in changelogs]
+
+@api_router.put("/admin/changelogs/{changelog_id}")
+async def update_changelog(changelog_id: str, changelog_data: ChangelogCreate, current_admin = Depends(require_admin_access)):
+    result = await db.changelogs.update_one(
+        {"id": changelog_id},
+        {"$set": changelog_data.dict()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Changelog not found")
+    return {"message": "Changelog updated successfully"}
+
+@api_router.delete("/admin/changelogs/{changelog_id}")
+async def delete_changelog(changelog_id: str, current_admin = Depends(require_admin_access)):
+    result = await db.changelogs.delete_one({"id": changelog_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Changelog not found")
+    return {"message": "Changelog deleted successfully"}
 
 @api_router.get("/user/me")
 async def get_current_user_info(current_user = Depends(get_current_user)):
