@@ -716,6 +716,96 @@ class RevolutionRPAPITester:
             print(f"   Status: {response.get('status', 'Unknown')}")
         return success
 
+    def test_get_public_application_by_id(self):
+        """Test getting a specific public application by ID"""
+        if not self.created_form_id:
+            print("⚠️  Skipping - No form ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Get Public Application By ID",
+            "GET",
+            f"applications/{self.created_form_id}",
+            200
+        )
+        if success:
+            print(f"   Form title: {response.get('title', 'Unknown')}")
+            print(f"   Form position: {response.get('position', 'Unknown')}")
+        return success
+
+    def test_delete_application_form(self):
+        """Test deleting an application form (admin only)"""
+        if not self.admin_token or not self.created_form_id:
+            print("⚠️  Skipping - No admin token or form ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Delete Application Form",
+            "DELETE",
+            f"admin/application-forms/{self.created_form_id}",
+            200,
+            token=self.admin_token
+        )
+        return success
+
+    def test_update_changelog(self):
+        """Test updating a changelog (admin only)"""
+        if not self.admin_token or not self.created_changelog_id:
+            print("⚠️  Skipping - No admin token or changelog ID available")
+            return False
+
+        updated_changelog_data = {
+            "title": "Updated Test Update v1.1",
+            "content": "Dette er en opdateret test changelog med flere features.",
+            "version": "1.1.0"
+        }
+        
+        success, response = self.run_test(
+            "Update Changelog",
+            "PUT",
+            f"admin/changelogs/{self.created_changelog_id}",
+            200,
+            data=updated_changelog_data,
+            token=self.admin_token
+        )
+        return success
+
+    def test_delete_changelog(self):
+        """Test deleting a changelog (admin only)"""
+        if not self.admin_token or not self.created_changelog_id:
+            print("⚠️  Skipping - No admin token or changelog ID available")
+            return False
+            
+        success, response = self.run_test(
+            "Delete Changelog",
+            "DELETE",
+            f"admin/changelogs/{self.created_changelog_id}",
+            200,
+            token=self.admin_token
+        )
+        return success
+
+    def test_unauthorized_access(self):
+        """Test that endpoints requiring auth return 401 without token"""
+        success, response = self.run_test(
+            "Unauthorized Access Test",
+            "GET",
+            "admin/users",
+            401  # Should be unauthorized
+        )
+        return success
+
+    def test_invalid_login(self):
+        """Test login with invalid credentials"""
+        success, response = self.run_test(
+            "Invalid Login Test",
+            "POST",
+            "admin/login",
+            401,  # Should be unauthorized
+            data={"username": "invalid", "password": "invalid"}
+        )
+        return success
+
 def main():
     print("🚀 Starting Revolution RP Role-Based User System Tests")
     print("=" * 70)
