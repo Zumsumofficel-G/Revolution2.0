@@ -431,9 +431,17 @@ async def get_user_applications(current_user = Depends(get_current_user)):
 # Application Form endpoints (admin only)
 @api_router.post("/admin/application-forms", response_model=ApplicationForm)
 async def create_application_form(form_data: ApplicationFormCreate, current_admin = Depends(require_admin_access)):
+    # Get the created_by field based on user type
+    if hasattr(current_admin, 'username'):
+        created_by = current_admin.username
+    elif hasattr(current_admin, 'discord_username'):
+        created_by = current_admin.discord_username
+    else:
+        created_by = "unknown"
+    
     form = ApplicationForm(
         **form_data.dict(), 
-        created_by=getattr(current_admin, 'username', current_admin.discord_username)
+        created_by=created_by
     )
     await db.application_forms.insert_one(form.dict())
     return form
