@@ -818,18 +818,10 @@ const ApplicationManager = ({ applications, onUpdate }) => {
 
   const handleCreateForm = async () => {
     try {
-      const applications = getApplications();
-      const newFormWithId = {
-        id: `form-${Date.now()}`,
-        ...newForm,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        created_by: "admin"
-      };
-      
-      applications.push(newFormWithId);
-      setApplications(applications);
-      
+      const token = localStorage.getItem('auth_token');
+      await axios.post(`${API_BASE_URL}/admin/application-forms`, newForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setIsCreateDialogOpen(false);
       setNewForm({
         title: '',
@@ -847,21 +839,16 @@ const ApplicationManager = ({ applications, onUpdate }) => {
 
   const handleEditForm = async () => {
     try {
-      const applications = getApplications();
-      const formIndex = applications.findIndex(app => app.id === editingForm.id);
-      
-      if (formIndex !== -1) {
-        applications[formIndex] = {
-          ...applications[formIndex],
-          title: editingForm.title,
-          description: editingForm.description,
-          position: editingForm.position,
-          fields: editingForm.fields,
-          webhook_url: editingForm.webhook_url
-        };
-        setApplications(applications);
-      }
-      
+      const token = localStorage.getItem('auth_token');
+      await axios.put(`${API_BASE_URL}/admin/application-forms/${editingForm.id}`, {
+        title: editingForm.title,
+        description: editingForm.description,
+        position: editingForm.position,
+        fields: editingForm.fields,
+        webhook_url: editingForm.webhook_url
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setIsEditDialogOpen(false);
       setEditingForm(null);
       onUpdate();
@@ -875,9 +862,10 @@ const ApplicationManager = ({ applications, onUpdate }) => {
     if (!window.confirm('Er du sikker på, at du vil slette denne ansøgningsformular?')) return;
     
     try {
-      const applications = getApplications();
-      const filteredApps = applications.filter(app => app.id !== formId);
-      setApplications(filteredApps);
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(`${API_BASE_URL}/admin/application-forms/${formId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       onUpdate();
     } catch (error) {
       console.error('Failed to delete form:', error);
