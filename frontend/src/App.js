@@ -734,61 +734,50 @@ const ApplicationForm = () => {
             </Badge>
           </CardHeader>
           <CardContent>
-            {!isAuthenticated ? (
-              <div className="text-center py-8">
-                <p className="text-gray-300 mb-4">Du skal logge ind med Discord for at ansøge</p>
-                <Link to="/login">
-                  <Button className="bg-indigo-600 hover:bg-indigo-700">
-                    Log ind med Discord
-                  </Button>
-                </Link>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <Label htmlFor="applicant_name" className="text-white">Dit navn *</Label>
+                <Input
+                  id="applicant_name"
+                  value={applicantName}
+                  onChange={(e) => setApplicantName(e.target.value)}
+                  required
+                  className="bg-white/5 border-purple-500/30 text-white"
+                  placeholder="Indtast dit fulde navn"
+                />
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <Label htmlFor="applicant_name" className="text-white">Dit navn *</Label>
-                  <Input
-                    id="applicant_name"
-                    value={applicantName}
-                    onChange={(e) => setApplicantName(e.target.value)}
-                    required
-                    className="bg-white/5 border-purple-500/30 text-white"
-                    placeholder="Indtast dit fulde navn"
-                  />
-                </div>
 
-                <Separator className="bg-purple-500/20" />
+              <Separator className="bg-purple-500/20" />
 
-                {form.fields.map((field) => (
-                  <div key={field.id}>
-                    <Label className="text-white">
-                      {field.label} {field.required && <span className="text-red-400">*</span>}
-                    </Label>
-                    <div className="mt-2">
-                      {renderField(field)}
-                    </div>
+              {form.fields.map((field) => (
+                <div key={field.id}>
+                  <Label className="text-white">
+                    {field.label} {field.required && <span className="text-red-400">*</span>}
+                  </Label>
+                  <div className="mt-2">
+                    {renderField(field)}
                   </div>
-                ))}
-
-                <div className="flex space-x-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => navigate('/')}
-                    className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
-                  >
-                    Annuller
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={submitting}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700"
-                  >
-                    {submitting ? 'Sender...' : 'Send Ansøgning'}
-                  </Button>
                 </div>
-              </form>
-            )}
+              ))}
+
+              <div className="flex space-x-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate('/')}
+                  className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuller
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                >
+                  {submitting ? 'Sender...' : 'Send Ansøgning'}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       </div>
