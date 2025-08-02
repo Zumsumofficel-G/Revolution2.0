@@ -1678,7 +1678,7 @@ const ChangelogManager = () => {
       </div>
 
       <div className="grid gap-6">
-        {changelogs.map((changelog) => (
+        {changelogsState.map((changelog) => (
           <Card key={changelog.id} className="bg-white/10 border-purple-500/20 text-white">
             <CardHeader>
               <div className="flex justify-between items-start">
