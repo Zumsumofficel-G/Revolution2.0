@@ -51,6 +51,7 @@ class AdminUser(BaseModel):
     username: str
     password_hash: str
     role: str = "admin"  # admin, staff
+    allowed_forms: List[str] = []  # form IDs this user can access
     created_at: datetime = Field(default_factory=datetime.utcnow)
     created_by: Optional[str] = None
 
@@ -59,6 +60,7 @@ class StaffUser(BaseModel):
     username: str
     password_hash: str
     role: str = "staff"
+    allowed_forms: List[str] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
     created_by: str
 
@@ -80,6 +82,33 @@ class AdminCreate(BaseModel):
     username: str
     password: str
     role: str = "admin"  # admin or staff
+    allowed_forms: List[str] = []
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    allowed_forms: Optional[List[str]] = None
+
+class Changelog(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    content: str
+    version: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_by: str
+
+class ChangelogCreate(BaseModel):
+    title: str
+    content: str
+    version: Optional[str] = None
+
+class DiscordNews(BaseModel):
+    id: str
+    content: str
+    author_username: str
+    author_avatar: Optional[str] = None
+    timestamp: str
+    attachments: List[Dict[str, Any]] = []
 
 class ApplicationFormField(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
