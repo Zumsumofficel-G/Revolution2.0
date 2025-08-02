@@ -1515,7 +1515,7 @@ const SubmissionManager = ({ submissions, onUpdate }) => {
 
 // Changelog Manager Component
 const ChangelogManager = () => {
-  const [changelogs, setChangelogs] = useState([]);
+  const [changelogsState, setChangelogsState] = useState([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingChangelog, setEditingChangelog] = useState(null);
@@ -1526,16 +1526,13 @@ const ChangelogManager = () => {
   });
 
   useEffect(() => {
-    fetchChangelogs();
+    fetchChangelogsList();
   }, []);
 
-  const fetchChangelogs = async () => {
+  const fetchChangelogsList = () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(`${API}/admin/changelogs`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setChangelogs(response.data);
+      const logs = getChangelogs().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setChangelogsState(logs);
     } catch (error) {
       console.error('Failed to fetch changelogs:', error);
     }
@@ -1543,13 +1540,20 @@ const ChangelogManager = () => {
 
   const handleCreateChangelog = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.post(`${API}/admin/changelogs`, newChangelog, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const changelogs = getChangelogs();
+      const newChangelogWithId = {
+        id: `changelog-${Date.now()}`,
+        ...newChangelog,
+        created_at: new Date().toISOString(),
+        created_by: "admin"
+      };
+      
+      changelogs.push(newChangelogWithId);
+      setChangelogs(changelogs);
+      
       setIsCreateDialogOpen(false);
       setNewChangelog({ title: '', content: '', version: '' });
-      fetchChangelogs();
+      fetchChangelogsList();
     } catch (error) {
       console.error('Failed to create changelog:', error);
       alert('Fejl ved oprettelse af changelog');
@@ -1558,17 +1562,22 @@ const ChangelogManager = () => {
 
   const handleEditChangelog = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.put(`${API}/admin/changelogs/${editingChangelog.id}`, {
-        title: editingChangelog.title,
-        content: editingChangelog.content,
-        version: editingChangelog.version
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const changelogs = getChangelogs();
+      const changelogIndex = changelogs.findIndex(log => log.id === editingChangelog.id);
+      
+      if (changelogIndex !== -1) {
+        changelogs[changelogIndex] = {
+          ...changelogs[changelogIndex],
+          title: editingChangelog.title,
+          content: editingChangelog.content,
+          version: editingChangelog.version
+        };
+        setChangelogs(changelogs);
+      }
+      
       setIsEditDialogOpen(false);
       setEditingChangelog(null);
-      fetchChangelogs();
+      fetchChangelogsList();
     } catch (error) {
       console.error('Failed to update changelog:', error);
       alert('Fejl ved opdatering af changelog');
@@ -1576,14 +1585,13 @@ const ChangelogManager = () => {
   };
 
   const handleDeleteChangelog = async (changelogId) => {
-    if (!confirm('Er du sikker på, at du vil slette denne changelog?')) return;
+    if (!window.confirm('Er du sikker på, at du vil slette denne changelog?')) return;
     
     try {
-      const token = localStorage.getItem('auth_token');
-      await axios.delete(`${API}/admin/changelogs/${changelogId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchChangelogs();
+      const changelogs = getChangelogs();
+      const filteredLogs = changelogs.filter(log => log.id !== changelogId);
+      setChangelogs(filteredLogs);
+      fetchChangelogsList();
     } catch (error) {
       console.error('Failed to delete changelog:', error);
       alert('Fejl ved sletning af changelog');
