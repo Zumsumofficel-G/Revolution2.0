@@ -71,6 +71,8 @@ const AuthProvider = ({ children }) => {
 const LandingPage = () => {
   const [serverStats, setServerStats] = useState({ players: 0, max_players: 64, hostname: "Revolution Roleplay" });
   const [applications, setApplications] = useState([]);
+  const [news, setNews] = useState([]);
+  const [changelogs, setChangelogs] = useState([]);
 
   useEffect(() => {
     // Fetch server stats
@@ -93,11 +95,38 @@ const LandingPage = () => {
       }
     };
 
+    // Fetch Discord news
+    const fetchNews = async () => {
+      try {
+        const response = await axios.get(`${API}/discord/news`);
+        setNews(response.data.slice(0, 5)); // Show latest 5 news
+      } catch (error) {
+        console.error("Failed to fetch news:", error);
+      }
+    };
+
+    // Fetch changelogs
+    const fetchChangelogs = async () => {
+      try {
+        const response = await axios.get(`${API}/changelogs`);
+        setChangelogs(response.data.slice(0, 3)); // Show latest 3 changelogs
+      } catch (error) {
+        console.error("Failed to fetch changelogs:", error);
+      }
+    };
+
     fetchServerStats();
     fetchApplications();
+    fetchNews();
+    fetchChangelogs();
 
-    // Update server stats every 30 seconds
-    const interval = setInterval(fetchServerStats, 30000);
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchServerStats();
+      fetchApplications();
+      fetchNews();
+    }, 30000);
+    
     return () => clearInterval(interval);
   }, []);
 
