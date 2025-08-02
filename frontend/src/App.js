@@ -241,7 +241,7 @@ const LandingPage = () => {
           </div>
           
           <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {changelogsState.map((changelog) => (
+            {changelogs.map((changelog) => (
               <Card key={changelog.id} className="bg-white/5 border-purple-500/20 text-white">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-3">
