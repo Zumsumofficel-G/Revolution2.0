@@ -1223,7 +1223,252 @@ const ApplicationManager = ({ applications, onUpdate }) => {
 
 // Submission Manager Component  
 const SubmissionManager = ({ submissions, onUpdate }) => {
-  return <div className="text-white">Submission Manager - Implementation continues</div>;
+  const { user } = useAuth();
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredSubmissions = submissions.filter(submission => {
+    if (statusFilter === 'all') return true;
+    return submission.status === statusFilter;
+  });
+
+  const handleViewSubmission = async (submissionId) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API}/admin/submissions/${submissionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSelectedSubmission(response.data);
+      setIsViewDialogOpen(true);
+    } catch (error) {
+      console.error('Failed to fetch submission:', error);
+      alert('Fejl ved hentning af ansøgning');
+    }
+  };
+
+  const handleUpdateStatus = async (submissionId, newStatus) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.put(`${API}/admin/submissions/${submissionId}/status`, 
+        { status: newStatus }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      onUpdate();
+      if (selectedSubmission && selectedSubmission.id === submissionId) {
+        setSelectedSubmission(prev => ({ ...prev, status: newStatus }));
+      }
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      alert('Fejl ved opdatering af status');
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-600/20 text-yellow-300';
+      case 'approved': return 'bg-green-600/20 text-green-300';
+      case 'rejected': return 'bg-red-600/20 text-red-300';
+      default: return 'bg-gray-600/20 text-gray-300';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'pending': return 'Afventer';
+      case 'approved': return 'Godkendt';
+      case 'rejected': return 'Afvist';
+      default: return status;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Indsendte Ansøgninger</h2>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-48 bg-white/5 border-purple-500/30 text-white">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle ansøgninger</SelectItem>
+            <SelectItem value="pending">Afventer</SelectItem>
+            <SelectItem value="approved">Godkendt</SelectItem>
+            <SelectItem value="rejected">Afvist</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Card className="bg-white/10 border-purple-500/20">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-purple-500/20">
+                <TableHead className="text-gray-300">Ansøger</TableHead>
+                <TableHead className="text-gray-300">Formular</TableHead>
+                <TableHead className="text-gray-300">Indsendt</TableHead>
+                <TableHead className="text-gray-300">Status</TableHead>
+                <TableHead className="text-gray-300">Handlinger</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSubmissions.map((submission) => (
+                <TableRow key={submission.id} className="border-purple-500/20">
+                  <TableCell className="text-white font-medium">
+                    {submission.applicant_name}
+                  </TableCell>
+                  <TableCell className="text-gray-300">
+                    {/* We'll need to fetch form details or pass them in */}
+                    Ansøgning ID: {submission.form_id.slice(0, 8)}...
+                  </TableCell>
+                  <TableCell className="text-gray-300">
+                    {new Date(submission.submitted_at).toLocaleDateString('da-DK')}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(submission.status)}>
+                      {getStatusText(submission.status)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewSubmission(submission.id)}
+                        className="border-purple-500 text-purple-300"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {submission.status === 'pending' && (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleUpdateStatus(submission.id, 'approved')}
+                            className="border-green-500 text-green-300 hover:bg-green-500/20"
+                          >
+                            Godkend
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleUpdateStatus(submission.id, 'rejected')}
+                            className="border-red-500 text-red-300 hover:bg-red-500/20"
+                          >
+                            Afvis
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {filteredSubmissions.length === 0 && (
+        <Card className="bg-white/10 border-purple-500/20 text-white">
+          <CardContent className="p-8 text-center">
+            <p className="text-gray-400">Ingen ansøgninger fundet</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* View Submission Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ansøgningsdetaljer</DialogTitle>
+            <DialogDescription className="text-gray-300">
+              Gennemse ansøgningssvar og opdater status
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedSubmission && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-gray-400">Ansøger</Label>
+                  <p className="text-white font-semibold">{selectedSubmission.applicant_name}</p>
+                </div>
+                <div>
+                  <Label className="text-gray-400">Status</Label>
+                  <Badge className={getStatusColor(selectedSubmission.status)}>
+                    {getStatusText(selectedSubmission.status)}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-gray-400">Indsendt</Label>
+                <p className="text-white">
+                  {new Date(selectedSubmission.submitted_at).toLocaleString('da-DK')}
+                </p>
+              </div>
+              
+              <Separator className="bg-purple-500/20" />
+              
+              <div>
+                <Label className="text-white text-lg mb-4 block">Ansøgningssvar</Label>
+                <div className="space-y-4">
+                  {Object.entries(selectedSubmission.responses).map(([fieldId, response]) => (
+                    <div key={fieldId} className="p-4 bg-white/5 rounded-lg">
+                      <Label className="text-gray-400">Felt ID: {fieldId}</Label>
+                      <p className="text-white mt-1">
+                        {Array.isArray(response) ? response.join(', ') : response}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <Separator className="bg-purple-500/20" />
+              
+              <div className="flex justify-between">
+                <Button 
+                  onClick={() => setIsViewDialogOpen(false)}
+                  variant="outline"
+                  className="border-gray-500 text-gray-300"
+                >
+                  Luk
+                </Button>
+                
+                <div className="flex space-x-2">
+                  {selectedSubmission.status !== 'approved' && (
+                    <Button 
+                      onClick={() => handleUpdateStatus(selectedSubmission.id, 'approved')}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Godkend
+                    </Button>
+                  )}
+                  {selectedSubmission.status !== 'rejected' && (
+                    <Button 
+                      onClick={() => handleUpdateStatus(selectedSubmission.id, 'rejected')}
+                      variant="destructive"
+                    >
+                      Afvis
+                    </Button>
+                  )}
+                  {selectedSubmission.status !== 'pending' && (
+                    <Button 
+                      onClick={() => handleUpdateStatus(selectedSubmission.id, 'pending')}
+                      variant="outline"
+                      className="border-yellow-500 text-yellow-300 hover:bg-yellow-500/20"
+                    >
+                      Marker som afventende
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 };
 
 // Changelog Manager Component
