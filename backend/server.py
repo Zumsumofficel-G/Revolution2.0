@@ -422,7 +422,52 @@ async def create_user(admin_data: AdminCreate, current_admin = Depends(require_a
 @api_router.get("/admin/users")
 async def get_admin_users(current_admin = Depends(require_admin_access)):
     users = await db.admin_users.find().to_list(1000)
-    return [{"id": user["id"], "username": user["username"], "role": user["role"], "created_at": user["created_at"]} for user in users]
+    return [
+        {
+            "id": user["id"], 
+            "username": user["username"], 
+            "role": user.get("role", "admin"), 
+            "created_at": user["created_at"],
+            "created_by": user.get("created_by", "system")
+        } 
+        for user in users
+    ]
+
+@api_router.delete("/admin/users/{user_id}")
+async def delete_admin_user(user_id: str, current_admin = Depends(require_admin_access)):
+    # Don't allow deleting yourself
+    if user_id == current_admin.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    # Don't allow deleting the default admin
+    user_to_delete = await db.admin_users.find_one({"id": user_id})
+    if user_to_delete and user_to_delete["username"] == "admin":
+        raise HTTPException(status_code=400, detail="Cannot delete default admin account")
+    
+    result = await db.admin_users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "User deleted successfully"}
+
+@api_router.put("/admin/users/{user_id}/role")
+async def update_user_role(user_id: str, role_data: dict, current_admin = Depends(require_admin_access)):
+    new_role = role_data.get("role")
+    if new_role not in ["admin", "staff"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    
+    # Don't allow changing your own role
+    if user_id == current_admin.id:
+        raise HTTPException(status_code=400, detail="Cannot change your own role")
+    
+    result = await db.admin_users.update_one(
+        {"id": user_id},
+        {"$set": {"role": new_role}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "User role updated successfully"}
 
 @api_router.get("/user/me")
 async def get_current_user_info(current_user = Depends(get_current_user)):
