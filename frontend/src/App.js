@@ -1721,7 +1721,7 @@ const ChangelogManager = () => {
         ))}
       </div>
 
-      {changelogs.length === 0 && (
+      {changelogsState.length === 0 && (
         <Card className="bg-white/10 border-purple-500/20 text-white">
           <CardContent className="p-8 text-center">
             <p className="text-gray-400">Ingen changelogs oprettet endnu</p>
