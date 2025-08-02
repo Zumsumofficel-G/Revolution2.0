@@ -349,16 +349,18 @@ const DiscordLogin = () => {
       setLoading(true);
       axios.get(`${API}/auth/discord/callback?code=${code}`)
         .then(response => {
-          login(response.data.access_token, response.data.user);
-          if (response.data.is_admin) {
-            navigate('/admin');
-          } else {
-            navigate('/dashboard');
-          }
+          const userData = response.data.user;
+          userData.is_admin = response.data.is_admin; // Ensure is_admin is in user object
+          login(response.data.access_token, userData);
+          
+          // Always redirect to homepage - user will see appropriate buttons based on role
+          navigate('/');
         })
         .catch(error => {
           console.error('Discord login failed:', error);
+          alert('Login fejlede, prøv igen');
           setLoading(false);
+          navigate('/login');
         });
     }
   }, [login, navigate]);
