@@ -1748,7 +1748,383 @@ const ChangelogManager = () => {
 
 // User Manager Component
 const UserManager = ({ applications }) => {
-  return <div className="text-white">User Manager - Implementation continues</div>;
+  const [users, setUsers] = useState([]);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [newUser, setNewUser] = useState({
+    username: '',
+    password: '',
+    role: 'staff',
+    allowed_forms: []
+  });
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API}/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.post(`${API}/admin/create-user`, newUser, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsCreateDialogOpen(false);
+      setNewUser({ username: '', password: '', role: 'staff', allowed_forms: [] });
+      fetchUsers();
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      alert('Fejl ved oprettelse af bruger');
+    }
+  };
+
+  const handleEditUser = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const updateData = {
+        username: editingUser.username,
+        allowed_forms: editingUser.allowed_forms
+      };
+      
+      // Only include password if it's been changed
+      if (editingUser.newPassword) {
+        updateData.password = editingUser.newPassword;
+      }
+      
+      await axios.put(`${API}/admin/users/${editingUser.id}`, updateData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsEditDialogOpen(false);
+      setEditingUser(null);
+      fetchUsers();
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      alert('Fejl ved opdatering af bruger');
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!confirm('Er du sikker på, at du vil slette denne bruger?')) return;
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(`${API}/admin/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchUsers();
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      alert('Fejl ved sletning af bruger');
+    }
+  };
+
+  const handleUpdateRole = async (userId, newRole) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.put(`${API}/admin/users/${userId}/role`, 
+        { role: newRole }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchUsers();
+    } catch (error) {
+      console.error('Failed to update role:', error);
+      alert('Fejl ved opdatering af rolle');
+    }
+  };
+
+  const openEditDialog = (user) => {
+    setEditingUser({ 
+      ...user,
+      newPassword: '', // Add field for new password
+      allowed_forms: user.allowed_forms || [] 
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleFormPermissionToggle = (formId, isEditing = false) => {
+    if (isEditing) {
+      setEditingUser(prev => ({
+        ...prev,
+        allowed_forms: prev.allowed_forms.includes(formId)
+          ? prev.allowed_forms.filter(id => id !== formId)
+          : [...prev.allowed_forms, formId]
+      }));
+    } else {
+      setNewUser(prev => ({
+        ...prev,
+        allowed_forms: prev.allowed_forms.includes(formId)
+          ? prev.allowed_forms.filter(id => id !== formId)
+          : [...prev.allowed_forms, formId]
+      }));
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Brugerstyring</h2>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-purple-600 hover:bg-purple-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Ny Bruger
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Opret ny bruger</DialogTitle>
+              <DialogDescription className="text-gray-300">
+                Opret en ny admin eller medarbejder
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-white">Brugernavn</Label>
+                  <Input
+                    value={newUser.username}
+                    onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-white">Adgangskode</Label>
+                  <Input
+                    type="password"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-white">Rolle</Label>
+                <Select value={newUser.role} onValueChange={(value) => setNewUser({...newUser, role: value})}>
+                  <SelectTrigger className="bg-white/5 border-purple-500/30 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                    <SelectItem value="staff">Medarbejder</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {newUser.role === 'staff' && (
+                <div>
+                  <Label className="text-white mb-3 block">Tilladte formularer</Label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {applications.map((app) => (
+                      <div key={app.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`form-${app.id}`}
+                          checked={newUser.allowed_forms.includes(app.id)}
+                          onChange={() => handleFormPermissionToggle(app.id)}
+                          className="rounded"
+                        />
+                        <Label htmlFor={`form-${app.id}`} className="text-gray-300 text-sm">
+                          {app.title} ({app.position})
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  {applications.length === 0 && (
+                    <p className="text-gray-400 text-sm">Ingen formularer tilgængelige</p>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex space-x-4">
+                <Button 
+                  onClick={() => setIsCreateDialogOpen(false)} 
+                  variant="outline"
+                  className="flex-1 border-gray-500 text-gray-300"
+                >
+                  Annuller
+                </Button>
+                <Button 
+                  onClick={handleCreateUser}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  disabled={!newUser.username || !newUser.password}
+                >
+                  Opret bruger
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Card className="bg-white/10 border-purple-500/20">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-purple-500/20">
+                <TableHead className="text-gray-300">Brugernavn</TableHead>
+                <TableHead className="text-gray-300">Rolle</TableHead>
+                <TableHead className="text-gray-300">Oprettet</TableHead>
+                <TableHead className="text-gray-300">Tilladte formularer</TableHead>
+                <TableHead className="text-gray-300">Handlinger</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id} className="border-purple-500/20">
+                  <TableCell className="text-white font-medium">
+                    {user.username}
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      className={user.role === 'admin' 
+                        ? 'bg-purple-600/20 text-purple-300' 
+                        : 'bg-blue-600/20 text-blue-300'
+                      }
+                    >
+                      {user.role === 'admin' ? 'Administrator' : 'Medarbejder'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-gray-300">
+                    {new Date(user.created_at).toLocaleDateString('da-DK')}
+                  </TableCell>
+                  <TableCell className="text-gray-300">
+                    {user.role === 'admin' ? (
+                      <span className="text-green-400">Alle formularer</span>
+                    ) : (
+                      <span>{user.allowed_forms?.length || 0} formularer</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => openEditDialog(user)}
+                        className="border-purple-500 text-purple-300"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      {user.username !== 'admin' && (
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeleteUser(user.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="bg-gray-900 border-purple-500/20 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Rediger bruger</DialogTitle>
+            <DialogDescription className="text-gray-300">
+              Opdater brugerens oplysninger og rettigheder
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingUser && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-white">Brugernavn</Label>
+                  <Input
+                    value={editingUser.username}
+                    onChange={(e) => setEditingUser({...editingUser, username: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                  />
+                </div>
+                
+                <div>
+                  <Label className="text-white">Ny adgangskode (lad stå tom for ikke at ændre)</Label>
+                  <Input
+                    type="password"
+                    value={editingUser.newPassword || ''}
+                    onChange={(e) => setEditingUser({...editingUser, newPassword: e.target.value})}
+                    className="bg-white/5 border-purple-500/30 text-white"
+                    placeholder="Lad stå tom for at beholde nuværende"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-gray-400">Rolle</Label>
+                <p className="text-white font-semibold">
+                  {editingUser.role === 'admin' ? 'Administrator' : 'Medarbejder'}
+                </p>
+              </div>
+              
+              {editingUser.role === 'staff' && (
+                <div>
+                  <Label className="text-white mb-3 block">Tilladte formularer</Label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {applications.map((app) => (
+                      <div key={app.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`edit-form-${app.id}`}
+                          checked={editingUser.allowed_forms.includes(app.id)}
+                          onChange={() => handleFormPermissionToggle(app.id, true)}
+                          className="rounded"
+                        />
+                        <Label htmlFor={`edit-form-${app.id}`} className="text-gray-300 text-sm">
+                          {app.title} ({app.position})
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  {applications.length === 0 && (
+                    <p className="text-gray-400 text-sm">Ingen formularer tilgængelige</p>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex space-x-4">
+                <Button 
+                  onClick={() => setIsEditDialogOpen(false)} 
+                  variant="outline"
+                  className="flex-1 border-gray-500 text-gray-300"
+                >
+                  Annuller
+                </Button>
+                <Button 
+                  onClick={handleEditUser}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  disabled={!editingUser.username}
+                >
+                  Gem ændringer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 };
 
 // Protected Route Component
