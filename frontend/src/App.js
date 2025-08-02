@@ -659,24 +659,15 @@ const ApplicationForm = () => {
       return;
     }
 
-    if (!isAuthenticated) {
-      alert("Du skal logge ind med Discord for at ansøge");
-      navigate('/login');
-      return;
-    }
-
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('auth_token');
       await axios.post(`${API}/applications/submit`, {
         form_id: formId,
         applicant_name: applicantName,
         responses
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       alert("Ansøgning sendt successfully!");
-      navigate('/dashboard');
+      navigate('/');
     } catch (error) {
       console.error("Failed to submit application:", error);
       alert("Fejl ved indsendelse af ansøgning");
