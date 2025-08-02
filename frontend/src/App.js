@@ -733,7 +733,14 @@ const AdminLogin = () => {
 
     try {
       const response = await axios.post(`${API}/admin/login`, credentials);
-      login(response.data.access_token, { username: credentials.username, type: 'admin', is_admin: true });
+      const userData = { 
+        username: credentials.username, 
+        type: 'admin', 
+        role: response.data.role,
+        is_admin: response.data.role === 'admin',
+        is_staff: ['admin', 'staff'].includes(response.data.role)
+      };
+      login(response.data.access_token, userData);
       navigate('/admin/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
