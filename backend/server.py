@@ -270,7 +270,8 @@ async def init_default_admin():
     if not existing_admin:
         default_admin = AdminUser(
             username="admin",
-            password_hash=hash_password("admin123")
+            password_hash=hash_password("admin123"),
+            role="admin"
         )
         await db.admin_users.insert_one(default_admin.dict())
         logging.info("Default admin user created: admin/admin123")
