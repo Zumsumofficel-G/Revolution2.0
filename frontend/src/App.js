@@ -332,15 +332,19 @@ const ApplicationForm = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const fetchForm = async () => {
+    const fetchForm = () => {
       try {
-        const response = await axios.get(`${API}/applications/${formId}`);
-        setForm(response.data);
-        const initialResponses = {};
-        response.data.fields.forEach(field => {
-          initialResponses[field.id] = field.field_type === 'checkbox' ? [] : '';
-        });
-        setResponses(initialResponses);
+        const applications = getApplications();
+        const foundForm = applications.find(app => app.id === formId && app.is_active);
+        
+        if (foundForm) {
+          setForm(foundForm);
+          const initialResponses = {};
+          foundForm.fields.forEach(field => {
+            initialResponses[field.id] = field.field_type === 'checkbox' ? [] : '';
+          });
+          setResponses(initialResponses);
+        }
       } catch (error) {
         console.error("Failed to fetch form:", error);
       } finally {
@@ -367,11 +371,25 @@ const ApplicationForm = () => {
 
     setSubmitting(true);
     try {
-      await axios.post(`${API}/applications/submit`, {
+      // Create new submission
+      const newSubmission = {
         form_id: formId,
         applicant_name: applicantName,
         responses
-      });
+      };
+      
+      // Add to local storage
+      const submissions = getSubmissions();
+      const submissionWithId = {
+        id: `sub-${Date.now()}`,
+        ...newSubmission,
+        submitted_at: new Date().toISOString(),
+        status: "pending"
+      };
+      
+      submissions.push(submissionWithId);
+      setSubmissions(submissions);
+      
       alert("Ansøgning sendt successfully!");
       navigate('/');
     } catch (error) {
