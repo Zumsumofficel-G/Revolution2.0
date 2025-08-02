@@ -429,8 +429,10 @@ async def get_current_user_info(current_user = Depends(get_current_user)):
         return {
             "type": "admin",
             "username": current_user["user"].username,
+            "role": current_user["user"].role,
             "created_at": current_user["user"].created_at,
-            "is_admin": True
+            "is_admin": current_user["user"].role == "admin",
+            "is_staff": current_user["user"].role in ["admin", "staff"]
         }
     else:
         user = current_user["user"]
