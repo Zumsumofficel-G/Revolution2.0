@@ -100,17 +100,131 @@ class RevolutionRPAPITester:
         )
         return success
 
-    def test_admin_me(self):
-        """Test getting current admin info"""
+    def test_discord_messages(self):
+        """Test Discord messages endpoint"""
         success, response = self.run_test(
-            "Admin Me",
+            "Discord Messages",
             "GET",
-            "admin/me",
+            "discord/messages",
+            200
+        )
+        if success:
+            print(f"   Found {len(response)} Discord messages")
+            if response:
+                first_msg = response[0]
+                required_fields = ['id', 'content', 'author_username', 'timestamp']
+                for field in required_fields:
+                    if field in first_msg:
+                        print(f"   {field}: {first_msg[field]}")
+                    else:
+                        print(f"⚠️  Warning: Missing field '{field}' in Discord message")
+        return success
+
+    def test_discord_oauth_login(self):
+        """Test Discord OAuth login URL generation"""
+        success, response = self.run_test(
+            "Discord OAuth Login",
+            "GET",
+            "auth/discord/login",
+            200
+        )
+        if success:
+            if 'login_url' in response:
+                print(f"   Login URL generated: {response['login_url'][:50]}...")
+                # Check if URL contains required parameters
+                url = response['login_url']
+                required_params = ['client_id', 'redirect_uri', 'response_type', 'scope']
+                for param in required_params:
+                    if param in url:
+                        print(f"   ✓ Contains {param}")
+                    else:
+                        print(f"   ⚠️  Missing {param} in URL")
+            else:
+                print("   ⚠️  No login_url in response")
+        return success
+
+    def test_user_me_endpoint(self):
+        """Test user/me endpoint (requires authentication)"""
+        if not self.token:
+            print("⚠️  Skipping - No token available")
+            return False
+            
+        success, response = self.run_test(
+            "User Me",
+            "GET",
+            "user/me",
             200,
             auth_required=True
         )
         if success:
-            print(f"   Admin username: {response.get('username')}")
+            user_type = response.get('type', 'unknown')
+            print(f"   User type: {user_type}")
+            if user_type == 'admin':
+                print(f"   Username: {response.get('username')}")
+            elif user_type == 'discord':
+                print(f"   Discord username: {response.get('discord_username')}")
+                print(f"   Is admin: {response.get('is_admin')}")
+        return success
+
+    def test_user_applications_endpoint(self):
+        """Test user/applications endpoint"""
+        if not self.token:
+            print("⚠️  Skipping - No token available")
+            return False
+            
+        success, response = self.run_test(
+            "User Applications",
+            "GET",
+            "user/applications",
+            200,
+            auth_required=True
+        )
+        if success:
+            print(f"   Found {len(response)} user applications")
+        return success
+
+    def test_submit_application_with_auth(self):
+        """Test submitting an application with authentication"""
+        if not self.created_form_id or not self.token:
+            print("⚠️  Skipping - No form ID or token available")
+            return False
+
+        # First get the form to get field IDs
+        form_response = requests.get(f"{self.base_url}/applications/{self.created_form_id}")
+        if form_response.status_code != 200:
+            print("⚠️  Could not fetch form for submission test")
+            return False
+            
+        form_data = form_response.json()
+        
+        # Create responses for each field
+        responses = {}
+        for field in form_data.get('fields', []):
+            field_id = field['id']
+            if field['field_type'] == 'text':
+                responses[field_id] = "Test Discord User"
+            elif field['field_type'] == 'textarea':
+                responses[field_id] = "Jeg vil gerne være moderator fordi jeg elsker at hjælpe andre spillere."
+            elif field['field_type'] == 'select':
+                responses[field_id] = field['options'][0] if field.get('options') else "Ingen"
+
+        submission_data = {
+            "form_id": self.created_form_id,
+            "applicant_name": "Test Discord User",
+            "responses": responses
+        }
+        
+        success, response = self.run_test(
+            "Submit Application (Authenticated)",
+            "POST",
+            "applications/submit",
+            200,
+            data=submission_data,
+            auth_required=True
+        )
+        if success and 'submission_id' in response:
+            self.created_submission_id = response['submission_id']
+            print(f"   Created submission ID: {self.created_submission_id}")
         return success
 
     def test_create_application_form(self):
